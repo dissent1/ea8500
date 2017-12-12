@@ -1,0 +1,72 @@
+diff -Naur dnsmasq.old/src/helper.c dnsmasq.new/src/helper.c
+--- dnsmasq-2.55.orig/src/helper.c      2010-06-06 12:22:30.000000000 -0700
++++ dnsmasq-2.55/src/helper.c   2013-10-03 09:48:10.260507772 -0700
+@@ -1,3 +1,4 @@
++/* Modifications were made by Linksys on or before Thu Oct  3 09:47:19 PDT 2013 */
+ /* dnsmasq is Copyright (c) 2000-2010 Simon Kelley
+
+    This program is free software; you can redistribute it and/or modify
+@@ -115,6 +115,8 @@
+       unsigned char *buf = (unsigned char *)daemon->namebuff;
+       unsigned char *end, *alloc_buff = NULL;
+       int err = 0;
++      
++      free(alloc_buff);
+ 
+       /* we read zero bytes when pipe closed: this is our signal to exit */ 
+       if (!read_write(pipefd[0], (unsigned char *)&data, sizeof(data), 1))
+@@ -169,8 +171,6 @@
+       /* possible fork errors are all temporary resource problems */
+       while ((pid = fork()) == -1 && (errno == EAGAIN || errno == ENOMEM))
+ 	sleep(2);
+-
+-      free(alloc_buff);
+       
+       if (pid == -1)
+ 	continue;
+diff -Naur dnsmasq.old/src/lease.c dnsmasq.new/src/lease.c
+--- dnsmasq.old/src/lease.c	2013-09-30 15:23:37.601788918 +0800
++++ dnsmasq.new/src/lease.c	2013-09-30 15:53:21.289709394 +0800
+@@ -587,9 +587,13 @@
+ 	  old_leases = lease->next;
+ 	  
+ 	  free(lease->old_hostname); 
++      lease->old_hostname = NULL;
+ 	  free(lease->clid);
++      lease->clid = NULL;
+ 	  free(lease->extradata);
++      lease->extradata = NULL;
+ 	  free(lease);
++      lease = NULL;
+ 	    
+ 	  return 1; 
+ 	}
+diff -Naur dnsmasq.old/src/network.c dnsmasq.new/src/network.c
+--- dnsmasq.old/src/network.c	2013-09-30 15:23:37.601788918 +0800
++++ dnsmasq.new/src/network.c	2013-09-30 15:53:21.285709394 +0800
+@@ -1,3 +1,4 @@
++/* Modifications were made by Linksys on or before Thu Oct  3 09:47:19 PDT 2013 */
+ /* dnsmasq is Copyright (c) 2000-2010 Simon Kelley
+
+    This program is free software; you can redistribute it and/or modify
+@@ -100,7 +100,8 @@
+       struct dhcp_bridge *bridge, *alias;
+       for (bridge = daemon->bridges; bridge; bridge = bridge->next)
+ 	{
+-	  for (alias = bridge->alias; alias; alias = alias->next)
++	  for (alias = bridge->alias; alias; alias = alias->next) 
++        if(name != NULL && alias->iface != NULL)
+ 	    if (strncmp(name, alias->iface, IF_NAMESIZE) == 0)
+ 	      {
+ 		int newindex;
+diff -Naur dnsmasq.old/src/rfc2131.c dnsmasq.new/src/rfc2131.c
+--- dnsmasq.old/src/rfc2131.c	2013-09-30 15:23:37.601788918 +0800
++++ dnsmasq.new/src/rfc2131.c	2013-10-01 09:43:06.000000000 +0800
+@@ -1344,6 +1344,7 @@
+ 	      
+ 	      lease->changed = 1;
+ 	      free(lease->extradata);
++          lease->extradata =  NULL;
+ 	      lease->extradata_size = lease->extradata_len = 0;
+ 	      
+ 	      add_extradata_opt(lease, option_find(mess, sz, OPTION_VENDOR_ID, 1));

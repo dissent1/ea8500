@@ -1,0 +1,117 @@
+--- linux/arch/arm/mach-msm/nand_partitions.c	2015-02-09 10:14:59.172870866 -0800
++++ linux-3.4.103/arch/arm/mach-msm/nand_partitions.c	2015-02-09 16:27:01.805415919 -0800
+@@ -38,12 +38,71 @@
+ #endif
+ 
+ /* configuration tags specific to msm */
++#define EA8500_MTD_MAX_PARTS 18
+ 
+-static struct mtd_partition msm_nand_partitions[SMEM_MAX_PARTITIONS + MSM_MTD_MAX_PARTS];
++static struct mtd_partition msm_nand_partitions[SMEM_MAX_PARTITIONS + EA8500_MTD_MAX_PARTS];
+ static char msm_nand_names[ARRAY_SIZE(msm_nand_partitions) * SMEM_MAX_PART_NAME];
+ 
+ extern struct flash_platform_data msm_nand_data;
+ 
++#ifdef CONFIG_MACH_LINKSYS_EA8500
++#define EBLOCK_SZ 0x20000       /* 128KB erase block size */
++/* Kernel address start at offset 0xf80000 */
++#define U_ENV_OFFSET    0xec0000 / EBLOCK_SZ
++#define S_ENV_OFFSET    0xf00000 / EBLOCK_SZ
++#define SIZE_MIN        EBLOCK_SZ/EBLOCK_SZ     /* 128KB or one block*/
++#define SIZE_256KB      SIZE_MIN * 2        
++#define SIZE_1MB        SIZE_256KB * 4
++#define SIZE_3MB        SIZE_1MB * 3
++#define SIZE_37MB       SIZE_1MB * 37
++#define SIZE_KERNEL_ROOTFS SIZE_3MB + SIZE_37MB
++#define KERNEL_OFFSET   S_ENV_OFFSET + (SIZE_256KB * 2)
++
++/* NAND flash information */
++static struct mtd_partition olympus_nand_partitions[] = {
++/* All the partition sizes are listed in terms of NAND block size of 128KB  */
++	{
++		.name           = "u_env",
++		.offset         = U_ENV_OFFSET,
++		.size           = SIZE_256KB,
++	},
++	{
++		.name           = "s_env",
++		.offset         = S_ENV_OFFSET,
++		.size           = SIZE_256KB,
++	},
++	{
++		.name           = "devinfo",
++		.offset         = S_ENV_OFFSET + SIZE_256KB,
++		.size           = SIZE_256KB,
++	},
++	{
++		.name           = "kernel",
++		.offset         = KERNEL_OFFSET,
++		.size           = SIZE_KERNEL_ROOTFS, /* 3 MB spill to rootfs*/
++	},
++	{
++		.name           = "rootfs",
++		.offset         = KERNEL_OFFSET + SIZE_3MB,
++		.size           = SIZE_37MB,
++	},
++	{
++		.name           = "alt_kernel",
++		.offset         = SIZE_KERNEL_ROOTFS + KERNEL_OFFSET,
++		.size           = SIZE_KERNEL_ROOTFS, /* 3MB spill over to al_rootfs*/
++	},
++	{
++		.name           = "alt_rootfs",
++		.offset         = SIZE_KERNEL_ROOTFS + SIZE_3MB + KERNEL_OFFSET,
++		.size           = SIZE_37MB,	/* 40 MB */
++	},
++	{
++		.name           = "syscfg",
++		.offset         = SIZE_KERNEL_ROOTFS + SIZE_3MB + KERNEL_OFFSET + SIZE_37MB,
++		.size           = MTDPART_SIZ_FULL,
++	},
++};
++#endif
+ static int __init parse_tag_msm_partition(const struct tag *tag)
+ {
+ 	struct mtd_partition *ptn = msm_nand_partitions;
+@@ -154,6 +213,12 @@ static int get_nand_partitions(void)
+ 	for (part = 0; part < partition_table->numparts; part++) {
+ 		part_entry = &partition_table->part_entry[part];
+ 
++#ifdef CONFIG_MACH_LINKSYS_EA8500
++		if (strcmp(part_entry->name,"rootfs") == 0 ) {
++                printk("%s: partition name=%s found.\n",__FUNCTION__,part_entry->name);
++			break;	/* we'll override it */
++		}
++#endif
+ 		/* Find a match for the Linux file system partition */
+ 		if (check_fs_partition(part_entry->name, name) == 0) {
+ 			ptn->name = name;
+@@ -178,7 +243,27 @@ static int get_nand_partitions(void)
+ 			name += SMEM_MAX_PART_NAME;
+ 		}
+ 	}
+-
++#ifdef CONFIG_MACH_LINKSYS_EA8500
++	/* override and append additional NAND partitions tables */
++	printk(KERN_INFO "Overlaying Olympus partition\n");
++#if 0
++	/* This should work as well */
++	memcpy((void *)&msm_nand_partitions[part],(void *)&olympus_nand_partitions,sizeof(olympus_nand_partitions));
++	msm_nand_data.nr_parts += sizeof(olympus_nand_partitions)/sizeof(struct mtd_partition);
++#else
++	/* Do it one by one - debugging purpose */
++	for (part = 0; part < sizeof(olympus_nand_partitions)/sizeof(struct mtd_partition); part++) {
++		ptn->name = olympus_nand_partitions[part].name;
++		ptn->size = olympus_nand_partitions[part].size;
++		ptn->offset = olympus_nand_partitions[part].offset;
++		printk(KERN_INFO "Olympus partition %s "
++				"-- Offset:%llx Size:%llx\n",
++				ptn->name, ptn->offset, ptn->size);
++		msm_nand_data.nr_parts++;
++		ptn++;
++	}
++#endif
++#endif
+ 	if (msm_nand_data.nr_parts) {
+ 		msm_nand_data.parts = msm_nand_partitions;
+ 		return 0;

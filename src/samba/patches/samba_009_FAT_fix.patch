@@ -1,0 +1,99 @@
+diff -Nuar samba-3.0.28a.org/source/lib/system.c samba-3.0.28a/source/lib/system.c
+--- samba-3.0.28a.org/source/lib/system.c	2008-03-08 23:56:26.000000000 +0800
++++ samba-3.0.28a/source/lib/system.c	2012-06-08 13:03:15.000000000 +0800
+@@ -1,3 +1,4 @@
++/* Modifications were made by Cisco Systems, Inc. on or before Thu Feb 16 11:28:44 PST 2012 */
+ /* 
+    Unix SMB/CIFS implementation.
+    Samba system utilities
+@@ -321,8 +322,29 @@
+  An ftruncate() wrapper that will deal with 64 bit filesizes.
+ ********************************************************************/
+ 
+-int sys_ftruncate(int fd, SMB_OFF_T offset)
++int sys_ftruncate(int fd, SMB_OFF_T offset, int force)
+ {
++	struct statfs   s;
++
++	if(fstatfs(fd, &s)) {	/* get filesystem type */
++		/*
++		   if call failed treat it as if it was an MSDOS (FAT) filesystem
++		   as the safest failure mode*.
++		 */
++		return 0;	
++	}
++	/*
++	   check for an MSDOS (FAT) filesystem and don't truncate.  Ftruncate 
++	   on an MSDOS filesystem can time causeing failures when the file
++	   size reaches about 300MB to 600MB depending in the speed of the
++	   system.  Allow forcing the ftruncate for shrinking files as not
++	   shrinking a file can cause worse problems and for things like
++	   smbpasswd that won't timeout.
++	 */
++	if(!force && s.f_type == 0x4d44) {
++		syslog(LOG_WARNING, "sys_ftruncate FAT file system\n");
++		return 0;
++	}
+ #if defined(HAVE_EXPLICIT_LARGEFILE_SUPPORT) && defined(HAVE_OFF64_T) && defined(HAVE_FTRUNCATE64)
+ 	return ftruncate64(fd, offset);
+ #else
+diff -Nuar samba-3.0.28a.org/source/modules/vfs_default.c samba-3.0.28a/source/modules/vfs_default.c
+--- samba-3.0.28a.org/source/modules/vfs_default.c	2008-03-08 23:56:27.000000000 +0800
++++ samba-3.0.28a/source/modules/vfs_default.c	2012-06-08 13:03:25.000000000 +0800
+@@ -1,3 +1,4 @@
++/* Modifications were made by Cisco Systems, Inc. on or before Thu Feb 16 11:28:44 PST 2012 */
+ /*
+    Unix SMB/CIFS implementation.
+    Wrap disk only vfs functions to sidestep dodgy compilers.
+@@ -675,7 +676,7 @@
+ 
+ 	/* Shrink - just ftruncate. */
+ 	if (st.st_size > len)
+-		return sys_ftruncate(fd, len);
++		return sys_ftruncate(fd, len, 1);
+ 
+ 	/* Write out the real space on disk. */
+ 	if (SMB_VFS_LSEEK(fsp, fd, st.st_size, SEEK_SET) != st.st_size)
+@@ -723,7 +724,7 @@
+ 	   expansion and some that don't! On Linux fat can't do
+ 	   ftruncate extend but ext2 can. */
+ 
+-	result = sys_ftruncate(fd, len);
++	result = sys_ftruncate(fd, len, 0);
+ 	if (result == 0)
+ 		goto done;
+ 
+diff -Nuar samba-3.0.28a.org/source/passdb/pdb_smbpasswd.c samba-3.0.28a/source/passdb/pdb_smbpasswd.c
+--- samba-3.0.28a.org/source/passdb/pdb_smbpasswd.c	2008-03-08 23:33:35.000000000 +0800
++++ samba-3.0.28a/source/passdb/pdb_smbpasswd.c	2012-06-08 13:03:35.000000000 +0800
+@@ -1,3 +1,4 @@
++/* Modifications were made by Cisco Systems, Inc. on or before Thu Feb 16 11:28:44 PST 2012 */
+ /*
+  * Unix SMB/CIFS implementation. 
+  * SMB parameters and setup
+@@ -704,7 +705,7 @@
+ Error was %s\n", wr_len, newpwd->smb_name, pfile, strerror(errno)));
+ 
+ 		/* Remove the entry we just wrote. */
+-		if(sys_ftruncate(fd, offpos) == -1) {
++		if(sys_ftruncate(fd, offpos, 1) == -1) {
+ 			DEBUG(0, ("add_smbfilepwd_entry: ERROR failed to ftruncate file %s. \
+ Error was %s. Password file may be corrupt ! Please examine by hand !\n", 
+ 				newpwd->smb_name, strerror(errno)));
+diff -Nuar samba-3.0.28a.org/source/printing/printfsp.c samba-3.0.28a/source/printing/printfsp.c
+--- samba-3.0.28a.org/source/printing/printfsp.c	2008-03-08 23:33:35.000000000 +0800
++++ samba-3.0.28a/source/printing/printfsp.c	2012-06-08 13:03:43.000000000 +0800
+@@ -1,3 +1,4 @@
++/* Modifications were made by Cisco Systems, Inc. on or before Thu Feb 16 11:28:44 PST 2012 */
+ /* 
+    Unix SMB/CIFS implementation.
+    printing backend routines for smbd - using files_struct rather
+@@ -110,7 +111,7 @@
+ 		 * Truncate the job. print_job_end will take
+ 		 * care of deleting it for us. JRA.
+ 		 */
+-		sys_ftruncate(fsp->fh->fd, 0);
++		sys_ftruncate(fsp->fh->fd, 0, 0);
+ 	}
+ 
+ 	if (fsp->fsp_name) {

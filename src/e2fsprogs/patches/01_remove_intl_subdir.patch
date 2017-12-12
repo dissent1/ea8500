@@ -1,0 +1,22 @@
+Since we need muliple binaries from the e2fsprogs package, libuuid is no longer
+built from its own Olympus package, and consolidated with this one. A similar
+patch was in the libuuid package to remove "intl", and thus is replicated here
+as well in the e2fsprogs package. There was no indication why this was done.
+
+--- e2fsprogs-1.42.12/Makefile.in	2015-02-27 11:45:12.119651404 -0800
++++ e2fsprogs-1.42.12.new/Makefile.in	2015-02-27 11:46:51.411649488 -0800
+@@ -1,3 +1,5 @@
++# Modifications were made by Belkin International, Inc. on or before Fri Feb 27 11:47:00 PST 2015 
++
+ srcdir = @srcdir@
+ top_srcdir = @top_srcdir@
+ VPATH = @srcdir@
+@@ -15,7 +17,7 @@
+ @BLKID_CMT@BLKID_LIB_SUBDIR= lib/blkid
+ QUOTA_LIB_SUBDIR= lib/quota
+ 
+-LIB_SUBDIRS=lib/et lib/ss lib/e2p $(UUID_LIB_SUBDIR) $(BLKID_LIB_SUBDIR) $(QUOTA_LIB_SUBDIR) lib/ext2fs intl
++LIB_SUBDIRS=lib/et lib/ss lib/e2p $(UUID_LIB_SUBDIR) $(BLKID_LIB_SUBDIR) $(QUOTA_LIB_SUBDIR) lib/ext2fs 
+ PROG_SUBDIRS=e2fsck $(DEBUGFS_DIR) misc $(RESIZE_DIR) tests/progs po
+ SUBDIRS=util $(LIB_SUBDIRS) $(PROG_SUBDIRS) tests
+ 

@@ -1,0 +1,5 @@
+
+ifndef EXPORT_ONLY
+	configure = cp -f ../../$(dir).config .config
+	build = CROSS_COMPILE=$(CROSS_COMPILE) make
+endif

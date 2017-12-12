@@ -1,0 +1,21 @@
+--- linux/drivers/usb/dwc3/dwc3-ipq.c	2014-12-09 14:07:14.493901660 -0800
++++ linux-3.4.103/drivers/usb/dwc3/dwc3-ipq.c	2014-12-11 14:52:42.661698279 -0800
+@@ -1435,7 +1435,7 @@ error:
+ 
+ static int dwc3_ipq_power_down(struct dwc3_ipq *mdwc)
+ {
+-	int data, reg;
++	int data;
+ 
+ 	/*Setting HCRST bit USBCMD register*/
+ 	data = readl(mdwc->base + 0x0020);
+@@ -1458,8 +1458,7 @@ static int dwc3_ipq_power_down(struct dw
+ 	data |= 0x80;
+ 	writel(data, mdwc->base + IPQ_SS_PHY_CTRL_REG);
+ 	/*USB30 RESET*/
+-	reg = USB30_RESET;
+-	writel(0x3F, reg);
++	writel(0x3F, (void __iomem *)USB30_RESET);
+ 
+ 	return 0;
+ }

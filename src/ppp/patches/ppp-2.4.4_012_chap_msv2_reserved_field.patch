@@ -1,0 +1,22 @@
+diff -Nur ppp-ori/pppd/chap_ms.c ppp-new/pppd/chap_ms.c
+--- ppp-ori/pppd/chap_ms.c	2013-09-26 13:53:59.657405849 +0800
++++ ppp-new/pppd/chap_ms.c	2013-09-26 14:04:29.301400926 +0800
+@@ -1,3 +1,4 @@
++/* Modifications were made by Belkin International, Inc. on or before Fri Sep 13 14:13:39 PDT 2013 */
+ /*
+  * chap_ms.c - Microsoft MS-CHAP compatible implementation.
+  *
+@@ -852,7 +853,12 @@
+     u_char *p = &response[MS_CHAP2_PEER_CHALLENGE];
+     int i;
+ 
+-    BZERO(response, sizeof(*response));
++    //BZERO(response, sizeof(*response));
++    /*
++    Tao.Liang@belkin.com
++    Zero response data, RFC2759, all reserved field should be 0
++    */
++    BZERO(response, MS_CHAP2_RESPONSE_LEN);
+ 
+     /* Generate the Peer-Challenge if requested, or copy it if supplied. */
+     if (!PeerChallenge)

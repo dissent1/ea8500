@@ -1,0 +1,17 @@
+diff -Naur iproute2-3.1.0.orig/Makefile iproute2-3.1.0/Makefile
+--- iproute2-3.1.0.orig/Makefile	2013-05-06 16:54:09.825043834 -0700
++++ iproute2-3.1.0/Makefile	2013-05-06 16:55:01.469137751 -0700
+@@ -1,4 +1,5 @@
+ # Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2012
++# Modifications were made by Belkin International, Inc. on or before Mon May  6 17:54:39 PDT 2013
+ DESTDIR=/usr/
+ ROOTDIR=$(DESTDIR)
+ LIBDIR=/usr/lib/
+@@ -32,6 +33,7 @@
+ HOSTCC = gcc
+ CCOPTS = -D_GNU_SOURCE -O2 -Wstrict-prototypes -Wall
+ CFLAGS = $(CCOPTS) -I../include $(DEFINES)
++CFLAGS += $(TOOLCHAIN_CFLAGS)
+ YACCFLAGS = -d -t -v
+ 
+ SUBDIRS=lib ip tc misc netem genl

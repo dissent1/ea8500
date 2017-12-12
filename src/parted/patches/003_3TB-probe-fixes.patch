@@ -1,0 +1,222 @@
+diff -aur parted-1.8.7.current/include/parted/geom.h parted-1.8.7/include/parted/geom.h
+--- parted-1.8.7.current/include/parted/geom.h	2007-04-18 14:12:10.000000000 -0700
++++ parted-1.8.7/include/parted/geom.h	2012-08-15 11:03:41.733370420 -0700
+@@ -1,3 +1,4 @@
++/* Modifications were made by Cisco Systems, Inc. on or before Wed Aug 15 11:03:38 PDT 2012 */
+ /*
+     libparted - a library for manipulating disk partitions
+     Copyright (C) 1998-2001, 2005 Free Software Foundation, Inc.
+@@ -64,6 +65,10 @@
+ 
+ extern int ped_geometry_read (const PedGeometry* geom, void* buffer,
+ 			      PedSector offset, PedSector count);
++extern int ped_geometry_read_512 (const PedGeometry* geom, void* buffer,
++			      PedSector offset, PedSector count);
++extern int ped_geometry_read_large (const PedGeometry* geom, void* buffer,
++			      PedSector offset, PedSector count);
+ extern int ped_geometry_write (PedGeometry* geom, const void* buffer,
+ 			       PedSector offset, PedSector count);
+ extern PedSector ped_geometry_check (PedGeometry* geom, void* buffer,
+diff -aur parted-1.8.7.current/libparted/cs/geom.c parted-1.8.7/libparted/cs/geom.c
+--- parted-1.8.7.current/libparted/cs/geom.c	2007-04-18 14:12:10.000000000 -0700
++++ parted-1.8.7/libparted/cs/geom.c	2012-08-15 11:49:11.636561284 -0700
+@@ -1,3 +1,4 @@
++/* Modifications were made by Cisco Systems, Inc. on or before Wed Aug 15 11:03:38 PDT 2012 */
+ /*
+     libparted - a library for manipulating disk partitions
+     Copyright (C) 1999, 2000, 2005, 2007 Free Software Foundation, Inc.
+@@ -305,6 +306,75 @@
+ 	return 1;
+ }
+ 
++/** 
++ * Reads data from the region represented by \p geom.  \p offset is the
++ * location from within the region, not from the start of the disk.
++ * \p count sectors are read into \p buffer.
++ * This version reads the full sector, not just the first 512 bytes
++ * This is essentially equivalent to:
++ * \code
++ * 	ped_device_read_large (geom->disk->dev, buffer, geom->start + offset, count)
++ * \endcode
++ *
++ * \throws PED_EXCEPTION_ERROR when attempting to read sectors outside of
++ * partition
++ *
++ * \return 0 on failure
++ */
++int
++ped_geometry_read_large (const PedGeometry* geom, void* buffer, PedSector offset,
++		   PedSector count)
++{
++	PedSector	real_start;
++
++	PED_ASSERT (geom != NULL, return 0);
++	PED_ASSERT (buffer != NULL, return 0);
++	PED_ASSERT (offset >= 0, return 0);
++	PED_ASSERT (count >= 0, return 0);
++	
++	real_start = geom->start + offset;
++
++	if (real_start + count - 1 > geom->end)
++		return 0;
++
++	if (!ped_device_read_large (geom->dev, buffer, real_start, count))
++		return 0;
++	return 1;
++}
++
++/** 
++ * Reads data from the region represented by \p geom.  \p offset is the
++ * location from within the region, not from the start of the disk.
++ * \p count sectors are read into \p buffer.
++ * offset and count are in 512 byte sectors even when actual sectors are larger
++ *
++ * \throws PED_EXCEPTION_ERROR when attempting to read sectors outside of
++ * partition
++ *
++ * \return 0 on failure
++ */
++int
++ped_geometry_read_512 (const PedGeometry* geom, void* buffer, PedSector offset,
++		   PedSector count)
++{
++	/* 512 byte blocks per sector */
++	int bps = geom->dev->sector_size / 512;
++
++	if (bps == 1) {
++		return ped_geometry_read(geom, buffer, offset, count);
++	}
++
++	/* read the sectors that the requested blocks sit it */
++	PedSector real_offset = (offset / bps) * bps;
++	PedSector real_end = ((offset + count) / bps) * bps;
++	int real_count = (real_end - real_offset) + 1;
++
++	void* buffer2 = ped_malloc (real_count * geom->dev->sector_size);
++	int ret = ped_geometry_read_large(geom, buffer2, real_offset, real_count);
++	memcpy(buffer, buffer2 + (offset % bps) * 512, count * 512);
++	return ret;
++}
++
+ /**
+  * Flushes the cache on \p geom.
+  *  
+diff -aur parted-1.8.7.current/libparted/fs/fat/bootsector.c parted-1.8.7/libparted/fs/fat/bootsector.c
+--- parted-1.8.7.current/libparted/fs/fat/bootsector.c	2007-04-18 14:12:10.000000000 -0700
++++ parted-1.8.7/libparted/fs/fat/bootsector.c	2012-08-15 11:04:55.009258725 -0700
+@@ -1,3 +1,4 @@
++/* Modifications were made by Cisco Systems, Inc. on or before Wed Aug 15 11:03:38 PDT 2012 */
+ /*
+     libparted
+     Copyright (C) 1998, 1999, 2000, 2002, 2004, 2007 Free Software Foundation, Inc.
+@@ -132,6 +133,7 @@
+ 
+ 	PED_ASSERT (bs != NULL, return 0);
+ 	
++	/*
+ 	if (PED_LE16_TO_CPU (bs->sector_size) != 512) {
+ 		if (ped_exception_throw (
+ 			PED_EXCEPTION_BUG,
+@@ -143,6 +145,7 @@
+ 				!= PED_EXCEPTION_IGNORE)
+ 			return 0;
+ 	}
++	*/
+ 
+ 	fs_info->logical_sector_size = PED_LE16_TO_CPU (bs->sector_size) / 512;
+ 
+diff -aur parted-1.8.7.current/libparted/fs/fat/fat.c parted-1.8.7/libparted/fs/fat/fat.c
+--- parted-1.8.7.current/libparted/fs/fat/fat.c	2012-08-15 11:01:26.725065301 -0700
++++ parted-1.8.7/libparted/fs/fat/fat.c	2012-08-15 11:05:20.656768387 -0700
+@@ -1,4 +1,4 @@
+-/* Modifications were made by Cisco Systems, Inc. on or before Wed Jul 18 15:30:40 PDT 2012 */
++/* Modifications were made by Cisco Systems, Inc. on or before Wed Aug 15 11:03:38 PDT 2012 */
+ /*
+     libparted
+     Copyright (C) 1998, 1999, 2000, 2001, 2007 Free Software Foundation, Inc.
+@@ -130,7 +130,7 @@
+ 
+ 	*fat_type = fs_info->fat_type;
+ 	result = ped_geometry_new (geom->dev, geom->start,
+-				   fs_info->sector_count);
++		   fs_info->sector_count / fs_info->logical_sector_size);
+ 
+ 	fat_free (fs);
+ 	return result;
+diff -aur parted-1.8.7.current/libparted/fs/hfs/probe.c parted-1.8.7/libparted/fs/hfs/probe.c
+--- parted-1.8.7.current/libparted/fs/hfs/probe.c	2007-04-18 14:12:10.000000000 -0700
++++ parted-1.8.7/libparted/fs/hfs/probe.c	2012-08-16 06:27:58.757797462 -0700
+@@ -1,3 +1,4 @@
++/* Modifications were made by Cisco Systems, Inc. on or before Wed Aug 15 11:03:38 PDT 2012 */
+ /*
+     libparted - a library for manipulating disk partitions
+     Copyright (C) 2004, 2005 Free Software Foundation, Inc.
+@@ -44,6 +45,7 @@
+ 	PED_ASSERT (geom != NULL, return 0);
+ 	PED_ASSERT (dev != NULL, return 0);
+ 
++	/*
+ 	if (dev->sector_size != PED_SECTOR_SIZE_DEFAULT) {
+ 		ped_exception_throw (
+ 			PED_EXCEPTION_ERROR,
+@@ -53,6 +55,7 @@
+ 			(int)PED_SECTOR_SIZE_DEFAULT );
+ 		return 0;
+ 	}
++	*/
+ 
+ 	return 1;
+ }
+@@ -114,7 +117,7 @@
+ 		HfsMasterDirectoryBlock	*mdb;
+ 		mdb = (HfsMasterDirectoryBlock *) buf;
+ 
+-		if (!ped_geometry_read (geom, buf, 2, 1)
++		if (!ped_geometry_read_512 (geom, buf, 2, 1)
+ 		    || (mdb->old_new.embedded.signature
+ 			!= PED_CPU_TO_BE16 (HFSP_SIGNATURE))) {
+ 			ped_geometry_destroy (geom_ret);
+@@ -128,7 +131,7 @@
+ 		vh = (HfsPVolumeHeader *) buf;
+ 
+ 		if ((geom->length < 5)
+-		    || !ped_geometry_read (geom, buf, 2, 1)
++		    || !ped_geometry_read_512 (geom, buf, 2, 1)
+ 		    || (vh->signature != PED_CPU_TO_BE16 (HFSP_SIGNATURE)))
+ 			return NULL;
+ 
+@@ -138,13 +141,15 @@
+ 		/* (blocks-1)*sz-1 has to be scanned last, because */
+ 		/* it can belong to a regular file */
+ 		max = ((PedSector) PED_BE32_TO_CPU (vh->total_blocks) + 1)
+-		      * ( PED_BE32_TO_CPU (vh->block_size) / PED_SECTOR_SIZE_DEFAULT )
++		      * ( PED_BE32_TO_CPU (vh->block_size) / geom->dev->sector_size )
+ 		      - 2;
+ 		search = max - 2 * ( PED_BE32_TO_CPU (vh->block_size)
+-				     / PED_SECTOR_SIZE_DEFAULT ) + 2;
++				     / geom->dev->sector_size ) + 2;
+ 		if (!(geom_ret = ped_geometry_new (geom->dev, geom->start,
+ 						   search + 2)))
+ 			return NULL;
++		/* why search?  close enough */
++		/*
+ 
+ 		for (; search < max; search++) {
+ 			if (!ped_geometry_set (geom_ret, geom_ret->start,
+@@ -155,7 +160,7 @@
+ 				return geom_ret;
+ 		}
+ 		search = ((PedSector) PED_BE32_TO_CPU (vh->total_blocks) - 1)
+-		      * ( PED_BE32_TO_CPU (vh->block_size) / PED_SECTOR_SIZE_DEFAULT )
++		      * ( PED_BE32_TO_CPU (vh->block_size) / geom->dev->sector_size )
+ 		      - 1;
+ 		if (!ped_geometry_set (geom_ret, geom_ret->start,
+ 					       search + 2)
+@@ -164,6 +169,7 @@
+ 		    	ped_geometry_destroy (geom_ret);
+ 			return NULL;
+ 		} else
++		*/
+ 			return geom_ret;
+ 	}
+ }

@@ -1,0 +1,13 @@
+diff -Naur udev-130.old/udev/udevd.c udev-130/udev/udevd.c
+--- udev-130.old/udev/udevd.c	2008-11-23 19:24:31.000000000 -0800
++++ udev-130/udev/udevd.c	2008-11-23 19:25:11.000000000 -0800
+@@ -50,6 +50,9 @@
+ 
+ /* maximum limit of forked childs */
+ #define UDEVD_MAX_CHILDS		256
++#ifndef SO_RCVBUFFORCE
++#define SO_RCVBUFFORCE 33
++#endif
+ 
+ static int debug;
+ 

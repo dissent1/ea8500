@@ -1,0 +1,6 @@
+
+ifndef EXPORT_ONLY
+	depends = linux
+	configure = autoconf && ./configure --target=$(TC) --host=$(TC) --with-linux-headers=$(LINUX)
+	build = make
+endif

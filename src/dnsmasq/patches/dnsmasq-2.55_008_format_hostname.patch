@@ -1,0 +1,55 @@
+diff -Naur dnsmasq-2.55-bk/src/util.c dnsmasq-2.55/src/util.c
+--- dnsmasq-2.55-bk/src/util.c	2011-06-30 14:31:33.533943000 +0800
++++ dnsmasq-2.55/src/util.c	2011-06-30 14:35:26.000000000 +0800
+@@ -136,6 +136,23 @@
+ 
+   return 1;
+ }
++static int format_hostname(char *name)
++{
++  char *c;
++  for (; *(c = name); name++)
++    /* check for legal char a-z A-Z 0-9 - _ . */
++    {
++      if ((*c >= 'A' && *c <= 'Z') ||
++	  (*c >= 'a' && *c <= 'z') ||
++	  (*c >= '0' && *c <= '9') ||
++	  *c == '-' || *c == '_'||*c=='.')
++	continue;
++      
++      *c = '?';
++    }
++  return 0;
++}
++
+ 
+ /* Hostnames have a more limited valid charset than domain names
+    so check for legal char a-z A-Z 0-9 - _ 
+@@ -145,6 +162,9 @@
+ {
+   char c;
+ 
++  if (format_hostname(name))
++      return 0;  
++
+   if (!check_name(name))
+     return 0;
+ 
+@@ -154,7 +174,7 @@
+       if ((c >= 'A' && c <= 'Z') ||
+ 	  (c >= 'a' && c <= 'z') ||
+ 	  (c >= '0' && c <= '9') ||
+-	  c == '-' || c == '_')
++	  c == '-' || c == '_'|| c == '?')
+ 	continue;
+       
+       /* end of hostname part */
+@@ -163,7 +183,7 @@
+       
+       return 0;
+     }
+-  
++   
+   return 1;
+ }
+   

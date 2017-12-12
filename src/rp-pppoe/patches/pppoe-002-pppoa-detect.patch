@@ -1,0 +1,83 @@
+diff -Nur rp-pppoe-orig/src/pppoe.c rp-pppoe-new/src/pppoe.c
+--- rp-pppoe-orig/src/pppoe.c	2013-09-13 13:44:41.418758737 +0800
++++ rp-pppoe-new/src/pppoe.c	2013-09-13 13:41:35.754760188 +0800
+@@ -73,6 +73,7 @@
+ 				       in signal handler */
+ 
+ int persist = 0; 		/* We are not a pppd plugin */
++static unsigned int session_id_pass_in=0x00ffffff;
+ /***********************************************************************
+ *%FUNCTION: sendSessionPacket
+ *%ARGUMENTS:
+@@ -91,6 +92,26 @@
+     if (optClampMSS) {
+ 	clampMSS(packet, "outgoing", optClampMSS);
+     }
++
++    /*Tao.Liang@belkin.com*/
++    /*check if this is a LCP Ack.If yes, means ppp LCP hand shake success*/
++    unsigned int session_id = ntohs(packet->session);
++    if(session_id == session_id_pass_in)
++    {
++        //This is our session.
++        unsigned char *p = packet->payload;
++        int protocol,code;
++        protocol = 0xff & *p++;
++        protocol = (protocol<<8) | *p++;
++        if(protocol == 0xc021)
++        {
++            code = 0xff & (*p);
++            if (code == 0x02)
++            {
++                system("sysevent set pppoa_server_discovery OK");
++            }
++        }
++    }
+     if (sendPacket(conn, conn->sessionSocket, packet, len + HDR_SIZE) < 0) {
+ 	if (errno == ENOBUFS) {
+ 	    /* No buffer space is a transient error */
+@@ -436,9 +457,9 @@
+     openlog("pppoe", LOG_PID, LOG_DAEMON);
+ 
+ #ifdef DEBUGGING_ENABLED
+-    options = "I:VAaT:D:hS:C:Usm:np:e:kdf:F:t:";
++    options = "I:VAaT:D:hS:C:Usm:np:e:P:kdf:F:t:";
+ #else
+-    options = "I:VAaT:hS:C:Usm:np:e:kdf:F:t:";
++    options = "I:VAaT:hS:C:Usm:np:e:P:kdf:F:t:";
+ #endif
+     while((opt = getopt(argc, argv, options)) != -1) {
+ 	switch(opt) {
+@@ -506,7 +527,32 @@
+ 	    /* Skip discovery phase! */
+ 	    conn.skipDiscovery = 1;
+ 	    break;
++    case 'P':
++        /*This option is used for PPPoA detection only!*/
++	    /* Existing session: "sess:xx:yy:zz:aa:bb:cc" where "sess" is
++	       session-ID, and xx:yy:zz:aa:bb:cc is MAC-address of peer */
++	    n = sscanf(optarg, "%u:%2x:%2x:%2x:%2x:%2x:%2x",
++		       &s, &m[0], &m[1], &m[2], &m[3], &m[4], &m[5]);
++	    if (n != 7) {
++		fprintf(stderr, "Illegal argument to -e: Should be sess:xx:yy:zz:aa:bb:cc\n");
++		exit(EXIT_FAILURE);
++	    }
++
++	    /* Copy MAC address of peer */
++	    for (n=0; n<6; n++) {
++		conn.peerEth[n] = (unsigned char) m[n];
++	    }
++	    
++        /* Convert session */
++	    conn.session = htons(s);
++
++	    /* Skip discovery phase! */
++	    conn.skipDiscovery = 1;
+ 
++        /* Backup the sessionid and mac*/
++        session_id_pass_in = s;
++        //system("sysevent set pppoa_server_discovery Started");
++        break;
+ 	case 'p':
+ 	    switchToRealID();
+ 	    pidfile = fopen(optarg, "w");

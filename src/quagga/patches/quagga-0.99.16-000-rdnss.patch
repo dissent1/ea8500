@@ -1,0 +1,267 @@
+diff -Nur quagga.orig/doc/ipv6.texi quagga.new/doc/ipv6.texi
+--- quagga.orig/doc/ipv6.texi	2010-07-23 10:23:47.179334603 -0700
++++ quagga.new/doc/ipv6.texi	2010-07-23 10:34:26.551585331 -0700
+@@ -157,15 +157,25 @@
+ Default: medium
+ @end deffn
+ 
++@deffn {Interface Command} {ipv6 nd rdnss ipv6prefix [lifetime]} {} Include
++RDNSS options to advertise recursive DNS server addresses. Additionally a
++maximum lifetime (in seconds) can be specified to limit the lifetime of this
++option. The valid range is between @code{<0-4294967295>} where 0 means that the
++RDNSS address must no longer be used. The default lifetime - without explicitly
++specify a lifetime - is unlimited.
++@end deffn
++
+ @example
+ @group
+ interface eth0
+  no ipv6 nd suppress-ra
+  ipv6 nd prefix 2001:0DB8:5009::/64
++ ipv6 nd rdnss 2001:0DB8:5009::1
+ @end group
+ @end example
+ 
+ For more information see @cite{RFC2462 (IPv6 Stateless Address Autoconfiguration)}
+ , @cite{RFC2461 (Neighbor Discovery for IP Version 6 (IPv6))}
+ , @cite{RFC3775 (Mobility Support in IPv6 (Mobile IPv6))}
++, @cite{RFC5006 (IPv6 Router Advertisement Option for DNS Configuration)}
+ and @cite{RFC4191 (Default Router Preferences and More-Specific Routes)}.
+diff -Nur quagga.orig/zebra/interface.c quagga.new/zebra/interface.c
+--- quagga.orig/zebra/interface.c	2010-07-23 10:24:45.111335514 -0700
++++ quagga.new/zebra/interface.c	2010-07-23 10:41:30.447334511 -0700
+@@ -82,7 +82,12 @@
+     rtadv->AdvIntervalOption = 0;
+     rtadv->DefaultPreference = RTADV_PREF_MEDIUM;
+ 
++
+     rtadv->AdvPrefixList = list_new ();
++
++    rtadv->AdvRDNSSFlag = 0;
++    rtadv->AdvRDNSSLifetime = RTADV_RDNSS_DEFAULT_LIFETIME;
++    rtadv->AdvRDNSSList = list_new ();
+   }    
+ #endif /* RTADV */
+ 
+@@ -631,6 +636,9 @@
+       vty_out (vty, "  ND router advertisement default router preference is "
+ 			"%s%s", rtadv_pref_strs[rtadv->DefaultPreference],
+ 		 VTY_NEWLINE);
++      if (rtadv->AdvRDNSSFlag)
++                 vty_out (vty, "  ND router advertisements with "
++                "RDNSS information.%s", VTY_NEWLINE);
+       if (rtadv->AdvManagedFlag)
+ 	vty_out (vty, "  Hosts use DHCP to obtain routable addresses.%s",
+ 		 VTY_NEWLINE);
+diff -Nur quagga.orig/zebra/interface.h quagga.new/zebra/interface.h
+--- quagga.orig/zebra/interface.h	2010-07-23 10:24:59.591335040 -0700
++++ quagga.new/zebra/interface.h	2010-07-23 10:45:00.683585382 -0700
+@@ -178,6 +178,21 @@
+      Default: 0 (medium) */
+   int DefaultPreference;
+ #define RTADV_PREF_MEDIUM 0x0 /* Per RFC4191. */
++
++  /* A list of Recursive DNS server addresses specified in
++     RFC 5006 */
++  int AdvRDNSSFlag;
++  struct list *AdvRDNSSList;
++
++  /* the maximum lifetime in seconds over which the RDNSS entry
++   * may be used. After this time a host may send a router solicitation
++   * message to refresh the RDNSS information.
++   *
++   * Default is infinity lifetime (0xffffffff) */
++  uint32_t AdvRDNSSLifetime;
++#define        RTADV_RDNSS_INFINITY_LIFETIME (0xffffffff)
++#define        RTADV_RDNSS_DEFAULT_LIFETIME RTADV_RDNSS_INFINITY_LIFETIME
++
+ };
+ 
+ #endif /* RTADV */
+diff -Nur quagga.orig/zebra/rtadv.c quagga.new/zebra/rtadv.c
+--- quagga.orig/zebra/rtadv.c	2010-07-23 10:25:30.551334974 -0700
++++ quagga.new/zebra/rtadv.c	2010-07-23 12:40:54.191335134 -0700
+@@ -283,6 +283,33 @@
+       len += sizeof (struct nd_opt_prefix_info);
+     }
+ 
++  if (zif->rtadv.AdvRDNSSFlag)
++    {
++               char *addr_ptr;
++               struct nd_opt_rdnss *ndopt_rdnss;
++               struct prefix *rdnss_prefix;
++               unsigned int rdnss_entries = 1;
++
++               ndopt_rdnss = (struct nd_opt_rdnss *) (buf + len);
++               ndopt_rdnss->nd_opt_type = ND_OPT_RDNSS;
++               ndopt_rdnss->nd_opt_reserved = 0;
++               ndopt_rdnss->nd_opt_lifetime = htonl(zif->rtadv.AdvRDNSSLifetime);
++
++               len += sizeof(struct nd_opt_rdnss);
++
++               /* Fill in all rdns server entries */
++               for (node = listhead (zif->rtadv.AdvRDNSSList); node; node = listnextnode (node))
++                 {
++                          rdnss_prefix = listgetdata (node);
++                         addr_ptr = (char *)(buf + len);
++                         memcpy(addr_ptr, &rdnss_prefix->u.prefix6, sizeof (struct in6_addr));
++                         len += sizeof (struct in6_addr);
++                         rdnss_entries += 2;
++                 }
++
++               ndopt_rdnss->nd_opt_len = rdnss_entries;
++    }
++
+   /* Hardware address. */
+ #ifdef HAVE_STRUCT_SOCKADDR_DL
+   sdl = &ifp->sdl;
+@@ -1430,6 +1457,117 @@
+   return CMD_SUCCESS;
+ }
+ 
++static struct prefix *
++rtadv_rdnss_lookup (struct list *list, struct prefix *p)
++{
++  struct listnode *node;
++  struct prefix *prefix;
++
++  for (node = listhead (list) ; node; node = listnextnode (node)) {
++    prefix = listgetdata (node) ;
++    if (prefix_same (prefix, p))
++      return prefix;
++  }
++  return NULL;
++}
++
++static void
++rtadv_rdnss_set (struct zebra_if *zif, struct prefix *p)
++{
++  struct prefix *prefix;
++  struct list *rdnsslist = zif->rtadv.AdvRDNSSList;
++
++  prefix = rtadv_rdnss_lookup (rdnsslist, p);
++  if (prefix)
++    return;
++
++  prefix = prefix_new ();
++  memcpy (prefix, p, sizeof (struct prefix));
++  listnode_add (rdnsslist, prefix);
++
++  return;
++}
++
++static int
++rtadv_rdnss_reset (struct zebra_if *zif, struct prefix *rp)
++{
++  struct prefix *prefix;
++
++  prefix = rtadv_rdnss_lookup(zif->rtadv.AdvRDNSSList, rp);
++  if (prefix != NULL)
++    {
++      listnode_delete (zif->rtadv.AdvRDNSSList, (void *) prefix);
++      prefix_free (prefix);
++      return 1;
++    }
++  else
++    return 0;
++}
++
++DEFUN (ipv6_nd_rdnss,
++       ipv6_nd_rdnss_cmd,
++       "ipv6 nd rdnss X:X::X:X (<0-4294967295>|infinite)",
++       "Interface IPv6 config commands\n"
++       "Neighbor discovery\n"
++       "RDNSS Option\n"
++       "IPv6 address of recursive DNS server\n")
++{
++  int ret;
++  char *pnt;
++  struct interface *ifp;
++  struct zebra_if *zif;
++  struct prefix rp;
++
++  ifp = (struct interface *) vty->index;
++  zif = ifp->info;
++
++  /* make sure no '/' exists in the argument */
++  pnt = strchr (argv[0], '/');
++  if (pnt != NULL)
++    {
++         vty_out (vty, "Malformed IPv6 RDNS address - no prefix notation allowed%s",
++                         VTY_NEWLINE);
++         return CMD_WARNING;
++    }
++
++  /* now we can abuse str2prefix_ipv6 for a sanity check
++   * because IPv6 addresses with missing prefix
++   * slashes '/' are threated as host routes */
++  ret = str2prefix_ipv6 (argv[0], (struct prefix_ipv6 *) &rp);
++  if (!ret)
++    {
++      vty_out (vty, "Malformed IPv6 RDNS address%s", VTY_NEWLINE);
++      return CMD_WARNING;
++    }
++
++  rtadv_rdnss_set(zif, &rp);
++  zif->rtadv.AdvRDNSSFlag = 1;
++
++  if (argc > 1)
++    {
++         if ( strncmp (argv[1], "i", 1) == 0)
++           {
++                 zif->rtadv.AdvRDNSSLifetime = RTADV_RDNSS_INFINITY_LIFETIME;
++           }
++         else
++           {
++                 zif->rtadv.AdvRDNSSLifetime =
++                         (u_int32_t) strtoll (argv[1], (char **)NULL, 10);
++           }
++    }
++
++  return CMD_SUCCESS;
++}
++
++ALIAS (ipv6_nd_rdnss,
++       ipv6_nd_rdnss_cmd_nolife,
++       "ipv6 nd rdnss X:X::X:X",
++       "Interface IPv6 config commands\n"
++       "Neighbor discovery\n"
++       "RDNSS Option\n"
++       "IPv6 address of recursive DNS server\n")
++
++
+ /* Write configuration about router advertisement. */
+ void
+ rtadv_config_write (struct vty *vty, struct interface *ifp)
+@@ -1605,6 +1743,9 @@
+   install_element (INTERFACE_NODE, &no_ipv6_nd_prefix_cmd);
+   install_element (INTERFACE_NODE, &ipv6_nd_router_preference_cmd);
+   install_element (INTERFACE_NODE, &no_ipv6_nd_router_preference_cmd);
++  install_element (INTERFACE_NODE, &ipv6_nd_rdnss_cmd);
++  install_element (INTERFACE_NODE, &ipv6_nd_rdnss_cmd_nolife);
++
+ }
+ 
+ static int
+diff -Nur quagga.orig/zebra/rtadv.h quagga.new/zebra/rtadv.h
+--- quagga.orig/zebra/rtadv.h	2010-07-23 10:26:01.891335116 -0700
++++ quagga.new/zebra/rtadv.h	2010-07-23 11:01:01.579335122 -0700
+@@ -96,4 +96,18 @@
+ 
+ extern const char *rtadv_pref_strs[];
+ 
++#ifndef ND_OPT_RDNSS
++#define        ND_OPT_RDNSS 25 /* RDNSS option (RFC 5006) */
++#endif
++
++/* see RFC 5006, section 5.1 */
++struct nd_opt_rdnss {
++       uint8_t  nd_opt_type;
++       uint8_t  nd_opt_len;
++       uint16_t nd_opt_reserved;
++       uint32_t nd_opt_lifetime;
++       /* followed by n (16 byte) entries */
++} __attribute__((__packed__));
++
++
+ #endif /* _ZEBRA_RTADV_H */

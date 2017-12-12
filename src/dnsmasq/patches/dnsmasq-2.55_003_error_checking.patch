@@ -1,0 +1,121 @@
+diff -Nur dnsmasq.orig/src/dhcp.c dnsmasq.new/src/dhcp.c
+--- dnsmasq.orig/src/dhcp.c	2010-07-08 19:26:55.192285485 -0700
++++ dnsmasq.new/src/dhcp.c	2010-07-08 19:29:38.312535664 -0700
+@@ -300,6 +300,18 @@
+   lease_prune(NULL, now); /* lose any expired leases */
+   iov.iov_len = dhcp_reply(parm.current, ifr.ifr_name, iface_index, (size_t)sz, 
+ 			   now, unicast_dest, &is_inform, pxe_fd);
++   /*
++    * enright@cisco.com 01/24/2010
++    * use returned iov_len as an indication of 
++    * message format failure from dhcp_reply.
++    * If the iov_len is -1 then a format error 
++    * was detected and we dont want to update 
++    * and lease information.
++    */
++   if (-1 == iov.iov_len) {
++      iov.iov_len = 0;
++      return;
++   }
+   lease_update_file(now);
+   lease_update_dns();
+     
+diff -Nur dnsmasq.orig/src/rfc2131.c dnsmasq.new/src/rfc2131.c
+--- dnsmasq.orig/src/rfc2131.c	2010-07-08 19:27:10.428285807 -0700
++++ dnsmasq.new/src/rfc2131.c	2010-07-08 19:38:46.680285691 -0700
+@@ -182,6 +182,69 @@
+ 	return 0;
+       
+       mess_type = option_uint(opt, 0, 1);
++
++   /*
++    * enright@cisco.com
++    * cdrouter tests are quite didactic.
++    * Before we attempt to pass on a dhcp message,
++    * we will do some message format checking
++    * For any failure return -1 to indicate this.
++    * Use -1 instead of 0 so that caller can distinguish
++    * between a format failure and no return message
++    */
++   switch(mess_type) {
++      case DHCPDISCOVER:
++         if (ntohs(mess->flags) & 0x7FFF) {
++            return (-1);
++         }
++         if (0 != mess->ciaddr.s_addr) {
++            return (-1);
++         }
++         if (0 != mess->yiaddr.s_addr) {
++            return (-1);
++         }
++         break;
++      case DHCPREQUEST:
++         if (ntohs(mess->flags) & 0x7FFF) {
++            return (-1);
++         }
++         if (0 != mess->yiaddr.s_addr) {
++            return (-1);
++         }
++         break;
++
++      case DHCPRELEASE:
++         if (0 != mess->secs) {
++            return (-1);
++         }
++         if (0 != ntohs(mess->flags)) {
++            return (-1);
++         }
++         if (0 != mess->yiaddr.s_addr) {
++            return (-1);
++         }
++         u8 hlen;
++         hlen = mess->hlen;
++         if (0 == hlen || DHCP_CHADDR_MAX < hlen) {
++            return (-1);
++         }
++         int i;
++         short byte;
++         for (i=0 ; i<hlen; i++) {
++            byte = (u8) (mess->chaddr[i]);
++            if (0 != byte) {
++               break;
++            }
++         }
++         if (hlen == i) {
++            return (-1);
++         }
++
++         break;
++      default:
++         break;
++   }
++
+       
+       /* two things to note here: expand_buf may move the packet,
+ 	 so reassign mess from daemon->packet. Also, the size
+@@ -204,8 +267,9 @@
+ 
+       /* Some buggy clients set ciaddr when they shouldn't, so clear that here since
+ 	 it can affect the context-determination code. */
+-      if ((option_find(mess, sz, OPTION_REQUESTED_IP, INADDRSZ) || mess_type == DHCPDISCOVER))
++      if ((option_find(mess, sz, OPTION_REQUESTED_IP, INADDRSZ) || mess_type == DHCPDISCOVER)) {
+ 	mess->ciaddr.s_addr = 0;
++      }
+ 
+       /* search for device identity from CPEWAN devices, we pass this through to the script */
+       if ((opt = option_find(mess, sz, OPTION_VENDOR_IDENT_OPT, 5)))
+@@ -1379,7 +1443,13 @@
+ 	    time = 0xffffffff;
+ 	  else
+ 	    time = (unsigned int)difftime(lease->expires, now);
+-	  option_put(mess, end, OPTION_LEASE_TIME, 4, time);
++   /*
++    * enright@cisco.com 
++    * UTP-35 cdrouter_dhcp_server_700 in module dhcp-s failed (also CSCta07641)
++    * The test fails when lease info is sent as a response to DHCPINFORM.
++    * The fix is to not add that option
++    */
++//	  option_put(mess, end, OPTION_LEASE_TIME, 4, time);
+ 	  lease_set_interface(lease, int_index);
+ 	}
+ 

@@ -1,0 +1,6 @@
+
+ifndef EXPORT_ONLY
+	depends = linux
+	configure = sed -e 's:daemon/::' Makefile > Kbuild
+	build = KBUILD_VERBOSE=1 ARCH=$(ARCH) make -C $(LINUX)/.. M=`pwd` CROSS_COMPILE=$(CROSS_COMPILE)
+endif

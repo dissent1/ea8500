@@ -1,0 +1,12 @@
+diff -Naur vsftpd-2.0.7/builddefs.h vsftpd-2.0.7.patch/builddefs.h
+--- vsftpd-2.0.7/builddefs.h	2008-07-29 20:55:40.000000000 -0700
++++ vsftpd-2.0.7.patch/builddefs.h	2009-03-12 10:45:18.000000000 -0700
+@@ -3,7 +3,7 @@
+ 
+ #undef VSF_BUILD_TCPWRAPPERS
+ #define VSF_BUILD_PAM
+-#undef VSF_BUILD_SSL
++#define VSF_BUILD_SSL
+ 
+ #endif /* VSF_BUILDDEFS_H */
+ 

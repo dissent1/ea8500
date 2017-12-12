@@ -1,0 +1,28 @@
+diff -Naur igmpproxy-0.1.orig/src/config.c igmpproxy-0.1/src/config.c
+--- igmpproxy-0.1.orig/src/config.c     2009-10-05 11:19:26.000000000 -0700
++++ igmpproxy-0.1/src/config.c  2010-10-12 13:58:06.000000000 -0700
+@@ -237,7 +237,7 @@
+     tmpPtr->next = NULL;    // Important to avoid seg fault...
+     tmpPtr->ratelimit = 0;
+     tmpPtr->threshold = 1;
+-    tmpPtr->state = IF_STATE_DOWNSTREAM;
++    tmpPtr->state = IF_STATE_DISABLED; // Fixed  Virtul If issue, Sridhar Ramaswamy, Cisco Systems, Inc. 2010-10-12
+     tmpPtr->allowednets = NULL;
+ 
+     // Make a copy of the token to store the IF name
+diff -Naur igmpproxy-0.1.orig/src/igmpproxy.c igmpproxy-0.1/src/igmpproxy.c
+--- igmpproxy-0.1.orig/src/igmpproxy.c  2009-08-27 12:32:28.000000000 -0700
++++ igmpproxy-0.1/src/igmpproxy.c       2010-10-12 13:57:17.000000000 -0700
+@@ -186,8 +186,10 @@
+                     }
+                 }
+ 
+-                addVIF( Dp );
+-                vifcount++;
++                if(!(Dp->state == IF_STATE_DISABLED)) {
++                        addVIF( Dp ); // Fixed  Virtul If issue, Sridhar Ramaswamy, Cisco Systems, Inc. 2010-10-12
++                        vifcount++;
++                }
+             }
+         }
+ 

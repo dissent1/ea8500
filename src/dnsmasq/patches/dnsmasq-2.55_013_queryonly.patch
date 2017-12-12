@@ -1,0 +1,14 @@
+diff -Naur dnsmasq/src/forward.c dnsmasq-2.55/src/forward.c
+--- dnsmasq/src/forward.c	2012-11-24 11:40:54.000000000 +0800
++++ dnsmasq-2.55/src/forward.c	2012-11-27 13:01:01.407041000 +0800
+@@ -751,6 +751,10 @@
+ 		  (struct all_addr *)&source_addr.in6.sin6_addr, types);
+ #endif
+     }
++  else
++  {
++    return;
++  }
+ 
+   m = answer_request (header, ((char *) header) + PACKETSZ, (size_t)n, 
+ 		      dst_addr_4, netmask, now);

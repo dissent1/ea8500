@@ -1,0 +1,16 @@
+diff -Nur dnsmasq.orig/src/rfc2131.c dnsmasq.new/src/rfc2131.c
+--- dnsmasq.orig/src/rfc2131.c	2011-01-15 12:45:44.094993310 -0800
++++ dnsmasq.new/src/rfc2131.c	2011-01-15 17:48:06.578992487 -0800
+@@ -2248,6 +2248,12 @@
+ static void clear_packet(struct dhcp_packet *mess, unsigned char *end)
+ {
+   memset(mess->sname, 0, sizeof(mess->sname));
++  /* 
++   * 01/15/2011 enright@cisco.com
++   * seed dhcp sname field with the name of the trusted server so that Ecosystem clients can
++   * differentiate this dhcp server from other dhcp servers
++   */
++  strcpy(mess->sname,"ecosystem.home.cisco.com");
+   memset(mess->file, 0, sizeof(mess->file));
+   memset(&mess->options[0] + sizeof(u32), 0, end - (&mess->options[0] + sizeof(u32)));
+   mess->siaddr.s_addr = 0;

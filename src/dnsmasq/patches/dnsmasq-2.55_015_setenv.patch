@@ -1,0 +1,27 @@
+diff -Naur dnsmasq.new/src/helper.c dnsmasq.new2/src/helper.c
+--- dnsmasq.new/src/helper.c	2013-10-10 10:31:17.049203767 +0800
++++ dnsmasq.new2/src/helper.c	2013-10-10 12:51:13.626721415 +0800
+@@ -279,8 +279,21 @@
+ 
+ static void my_setenv(const char *name, const char *value, int *error)
+ {
+-  if (*error == 0 && setenv(name, value, 1) != 0)
+-    *error = errno;
++    if(*error == 0 && name != NULL && value != NULL)
++    {
++        char *old_value = NULL;
++        old_value = getenv(name);
++        if(old_value != NULL)
++        {
++           if(strcmp(old_value,value)!= 0 && setenv(name, value, 1) != 0)
++               *error = errno;
++        }
++        else
++        {
++            if(setenv(name, value, 1) != 0)
++                *error = errno;
++        }
++    }
+ }
+  
+ static unsigned char *grab_extradata(unsigned char *buf, unsigned char *end,  char *env, int *err)

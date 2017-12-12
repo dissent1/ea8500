@@ -1,0 +1,133 @@
+--- a/source/Makefile.in	2011-05-03 16:02:06.887250001 -0700
++++ b/source/Makefile.in	2011-05-04 10:13:36.955250001 -0700
+@@ -162,8 +162,7 @@
+ 	bin/locktest2@EXEEXT@ bin/nsstest@EXEEXT@ bin/vfstest@EXEEXT@ \
+ 	bin/pdbtest@EXEEXT@ bin/talloctort@EXEEXT@ bin/replacetort@EXEEXT@
+ 
+-BIN_PROGS = @SMBMOUNT_PROGS@ @EXTRA_BIN_PROGS@ \
+-	$(BIN_PROGS1) $(BIN_PROGS2) $(BIN_PROGS3)
++BIN_PROGS = bin/smbpasswd bin/libbigballofmud.so
+ 
+ EVERYTHING_PROGS = bin/debug2html@EXEEXT@ bin/smbfilter@EXEEXT@ \
+ 	bin/talloctort@EXEEXT@ bin/replacetort@EXEEXT@ \
+@@ -177,12 +176,9 @@
+ 
+ SCRIPTS = $(srcdir)/script/smbtar $(builddir)/script/findsmb
+ 
+-VFS_MODULES = @VFS_MODULES@
+ PDB_MODULES = @PDB_MODULES@
+ RPC_MODULES = @RPC_MODULES@
+ IDMAP_MODULES = @IDMAP_MODULES@
+-CHARSET_MODULES = @CHARSET_MODULES@
+-AUTH_MODULES = @AUTH_MODULES@
+ NSS_INFO_MODULES = @NSS_INFO_MODULES@
+ MODULES = $(VFS_MODULES) $(PDB_MODULES) $(RPC_MODULES) $(IDMAP_MODULES) \
+           $(CHARSET_MODULES) $(AUTH_MODULES) $(NSS_INFO_MODULES)
+@@ -475,20 +471,18 @@
+ 	       $(AFS_SETTOKEN_OBJ) smbd/aio.o smbd/statvfs.o \
+ 	       smbd/dmapi.o $(MANGLE_OBJ) @VFS_STATIC@
+ 
+-SMBD_OBJ_BASE = $(PARAM_OBJ) $(SMBD_OBJ_SRV) $(LIBSMB_OBJ) \
+-		$(RPC_SERVER_OBJ) $(RPC_PARSE_OBJ) $(SECRETS_OBJ) \
+-		$(LOCKING_OBJ) $(PASSDB_OBJ) $(PRINTING_OBJ) $(PROFILE_OBJ) \
+-		$(LIB_OBJ) $(PRINTBACKEND_OBJ) $(OPLOCK_OBJ) \
+-		$(NOTIFY_OBJ) $(GROUPDB_OBJ) $(AUTH_OBJ) \
+-		$(LIBMSRPC_OBJ) $(LIBMSRPC_GEN_OBJ) \
+-		$(LIBADS_OBJ) $(KRBCLIENT_OBJ) $(LIBADS_SERVER_OBJ) \
+-		$(REGISTRY_OBJ) $(POPT_LIB_OBJ) \
+-		$(BUILDOPT_OBJ) $(SMBLDAP_OBJ)
+-
+-PRINTING_OBJ = printing/pcap.o printing/print_svid.o printing/print_aix.o \
+-               printing/print_cups.o printing/print_generic.o \
+-               printing/lpq_parse.o printing/load.o \
+-               printing/print_iprint.o printing/print_test.o
++SMBD_OBJ_BASE = $(SMBD_OBJ_SRV) \
++		$(RPC_SERVER_OBJ) \
++		$(LOCKING_OBJ) $(PRINTING_OBJ) \
++		$(PRINTBACKEND_OBJ) $(OPLOCK_OBJ) \
++		$(NOTIFY_OBJ) $(AUTH_OBJ) \
++		$(LIBADS_OBJ) $(LIBADS_SERVER_OBJ) \
++		$(REGISTRY_OBJ) \
++		$(BUILDOPT_OBJ)
++
++PRINTING_OBJ = printing/pcap.o \
++               printing/print_generic.o \
++               printing/lpq_parse.o printing/load.o
+ 
+ PRINTBASE_OBJ = printing/notify.o printing/printing_db.o
+ PRINTBACKEND_OBJ = printing/printing.o printing/nt_printing.o $(PRINTBASE_OBJ)
+@@ -507,8 +501,7 @@
+             nmbd/nmbd_subnetdb.o nmbd/nmbd_winsproxy.o nmbd/nmbd_winsserver.o \
+             nmbd/nmbd_workgroupdb.o nmbd/nmbd_synclists.o
+ 
+-NMBD_OBJ = $(NMBD_OBJ1) $(PARAM_OBJ) $(LIBSMB_OBJ) $(KRBCLIENT_OBJ) \
+-           $(PROFILE_OBJ) $(LIB_NONSMBD_OBJ) $(SECRETS_OBJ) $(POPT_LIB_OBJ)
++NMBD_OBJ = $(NMBD_OBJ1)
+ 
+ SWAT_OBJ1 = web/cgi.o web/diagnose.o web/startstop.o web/statuspage.o \
+            web/swat.o web/neg_lang.o
+@@ -543,10 +536,7 @@
+ 
+ PASSWD_UTIL_OBJ = utils/passwd_util.o
+ 
+-SMBPASSWD_OBJ = utils/smbpasswd.o $(PASSWD_UTIL_OBJ) $(PASSCHANGE_OBJ) \
+-		$(PARAM_OBJ) $(SECRETS_OBJ) $(LIBSMB_OBJ) $(PASSDB_OBJ) \
+-		$(GROUPDB_OBJ) $(LIB_NONSMBD_OBJ) $(KRBCLIENT_OBJ) \
+-		$(POPT_LIB_OBJ) $(SMBLDAP_OBJ) $(RPC_PARSE_OBJ) $(LIBMSRPC_GEN_OBJ) $(LIBMSRPC_OBJ)
++SMBPASSWD_OBJ = utils/smbpasswd.o $(PASSWD_UTIL_OBJ) $(PASSCHANGE_OBJ)
+ 
+ PDBEDIT_OBJ = utils/pdbedit.o $(PASSWD_UTIL_OBJ) $(PARAM_OBJ) $(PASSDB_OBJ) \
+ 		$(LIBSAMBA_OBJ) $(LIB_NONSMBD_OBJ) $(GROUPDB_OBJ) \
+@@ -597,7 +587,7 @@
+ 
+ LIBBIGBALLOFMUD_OBJ = $(PARAM_OBJ) $(LIB_NONSMBD_OBJ) $(SECRETS_OBJ) \
+ 	$(LIBSMB_OBJ) $(LIBMSRPC_OBJ) $(LIBMSRPC_GEN_OBJ) $(RPC_PARSE_OBJ) $(PASSDB_OBJ) \
+-	$(GROUPDB_OBJ) $(KRBCLIENT_OBJ) $(SMBLDAP_OBJ)
++	$(GROUPDB_OBJ) $(KRBCLIENT_OBJ) $(SMBLDAP_OBJ) $(POPT_OBJ) $(POPT_LIB_OBJ) $(PROFILE)
+ 
+ CLIENT_OBJ1 = client/client.o client/clitar.o rpc_client/cli_pipe.o \
+ 	      $(RPC_CLIENT_OBJ1) \
+@@ -963,15 +953,15 @@
+ 	  dir=bin $(MAKEDIR); fi
+ 	@: >> $@ || : > $@ # what a fancy emoticon!
+ 
+-bin/smbd@EXEEXT@: proto_exists $(SMBD_OBJ) @BUILD_POPT@ bin/.dummy
++bin/smbd@EXEEXT@: proto_exists $(SMBD_OBJ) bin/libbigballofmud.so bin/.dummy
+ 	@echo Linking $@
+-	@$(CC) $(FLAGS) -o $@ $(SMBD_OBJ) $(LDFLAGS) $(LDAP_LIBS) \
+-		$(KRB5LIBS) $(DYNEXP) $(PRINT_LIBS) $(AUTH_LIBS) \
+-		$(ACL_LIBS) $(PASSDB_LIBS) $(LIBS) @POPTLIBS@ @SMBD_LIBS@
++	@$(CC) $(FLAGS) -o $@ $(SMBD_OBJ) $(LDFLAGS) \
++		$(DYNEXP) $(PRINT_LIBS) $(AUTH_LIBS) \
++		$(ACL_LIBS) -Lbin -lbigballofmud
+ 
+-bin/nmbd@EXEEXT@: proto_exists $(NMBD_OBJ) @BUILD_POPT@ bin/.dummy
++bin/nmbd@EXEEXT@: proto_exists $(NMBD_OBJ) bin/libbigballofmud.so bin/.dummy
+ 	@echo Linking $@
+-	@$(CC) $(FLAGS) -o $@ $(NMBD_OBJ) $(LDFLAGS) $(DYNEXP) $(LIBS) @POPTLIBS@ $(KRB5LIBS) $(LDAP_LIBS)
++	@$(CC) $(FLAGS) -o $@ $(NMBD_OBJ) $(LDFLAGS) $(DYNEXP) $(LIBS) -Lbin -lbigballofmud
+ 
+ bin/swat@EXEEXT@: proto_exists $(SWAT_OBJ) @BUILD_POPT@ bin/.dummy
+ 	@echo Linking $@
+@@ -1048,10 +1038,10 @@
+ 	@echo Linking $@
+ 	@$(CC) $(FLAGS) -o $@ $(SMBTREE_OBJ) $(LDFLAGS) $(DYNEXP) $(LIBS) @POPTLIBS@ $(KRB5LIBS) $(LDAP_LIBS)
+ 
+-bin/smbpasswd@EXEEXT@: proto_exists $(SMBPASSWD_OBJ) @BUILD_POPT@ bin/.dummy
++bin/smbpasswd@EXEEXT@: proto_exists $(SMBPASSWD_OBJ) bin/libbigballofmud.so bin/.dummy
+ 	@echo Linking $@
+ 	@$(CC) $(FLAGS) -o $@ $(SMBPASSWD_OBJ) $(LDFLAGS) $(PASSDB_LIBS) \
+-		$(DYNEXP) $(LIBS) @POPTLIBS@ $(KRB5LIBS) $(LDAP_LIBS)
++		$(DYNEXP) $(LIBS) -Lbin -lbigballofmud
+ 
+ bin/pdbedit@EXEEXT@: proto_exists $(PDBEDIT_OBJ) @BUILD_POPT@ bin/.dummy
+ 	@echo Linking $@
+@@ -1189,7 +1179,7 @@
+ 	@-$(AR) -rc $@ $(CAC_OBJ)
+ 
+ # This is probably wrong for anything other than the GNU linker.
+-bin/libbigballofmud.@SHLIBEXT@: proto_exists $(LIBBIGBALLOFMUD_OBJ)
++bin/libbigballofmud.@SHLIBEXT@: proto_exists $(LIBBIGBALLOFMUD_OBJ) bin/.dummy
+ 	@echo Linking bigballofmud shared library $@
+ 	@$(SHLD) $(LDSHFLAGS) -o $@ $(LIBBIGBALLOFMUD_OBJ) $(LIBS) \
+ 		$(PASSDB_LIBS) $(IDMAP_LIBS) $(KRB5LIBS) $(LDAP_LIBS) \

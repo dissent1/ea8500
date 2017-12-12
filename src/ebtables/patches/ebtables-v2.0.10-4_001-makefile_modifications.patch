@@ -1,0 +1,90 @@
+Since ebtables does not use configure, we need to modify the Makefile
+directly to use the correct cross compiler and fix the installation process.
+--- ebtables-v2.0.10-4.orig/Makefile	2013-05-06 14:46:24.781333909 -0700
++++ ebtables-v2.0.10-4/Makefile	2013-05-06 14:45:27.397174187 -0700
+@@ -1,3 +1,4 @@
++# Modifications were made by Belkin International, Inc. on or before Wed May  6 15:10:52 PDT 2013
+ # ebtables Makefile
+ 
+ PROGNAME:=ebtables
+@@ -19,7 +20,7 @@
+ 
+ CFLAGS:=-Wall -Wunused -Werror 
+ CFLAGS_SH_LIB:=-fPIC -O3
+-CC:=gcc
++CC:=$(CC)
+ 
+ ifeq ($(shell uname -m),sparc64)
+ CFLAGS+=-DEBT_MIN_ALIGN=8 -DKERNEL_64_USERSPACE_32
+@@ -155,36 +156,37 @@
+ tmp3:=$(shell printf $(PIPE) | sed 's/\//\\\//g')
+ .PHONY: scripts
+ scripts: ebtables-save ebtables.sysv ebtables-config
++	mkdir -p $(DESTDIR)$(SYSCONFIGDIR)
+ 	cat ebtables-save | sed 's/__EXEC_PATH__/$(tmp1)/g' > ebtables-save_
+ 	mkdir -p $(DESTDIR)$(BINDIR)
+-	install -m 0755 -o root -g root ebtables-save_ $(DESTDIR)$(BINDIR)/ebtables-save
++	install -m 0755 ebtables-save_ $(DESTDIR)$(BINDIR)/ebtables-save
+ 	cat ebtables.sysv | sed 's/__EXEC_PATH__/$(tmp1)/g' | sed 's/__SYSCONFIG__/$(tmp2)/g' > ebtables.sysv_
+ 	if [ "$(DESTDIR)" != "" ]; then mkdir -p $(DESTDIR)$(INITDIR); fi
+-	if test -d $(DESTDIR)$(INITDIR); then install -m 0755 -o root -g root ebtables.sysv_ $(DESTDIR)$(INITDIR)/ebtables; fi
++	if test -d $(DESTDIR)$(INITDIR); then install -m 0755 ebtables.sysv_ $(DESTDIR)$(INITDIR)/ebtables; fi
+ 	cat ebtables-config | sed 's/__SYSCONFIG__/$(tmp2)/g' > ebtables-config_
+ 	if [ "$(DESTDIR)" != "" ]; then mkdir -p $(DESTDIR)$(SYSCONFIGDIR); fi
+-	if test -d $(DESTDIR)$(SYSCONFIGDIR); then install -m 0600 -o root -g root ebtables-config_ $(DESTDIR)$(SYSCONFIGDIR)/ebtables-config; fi
++	if test -d $(DESTDIR)$(SYSCONFIGDIR); then install -m 0600 ebtables-config_ $(DESTDIR)$(SYSCONFIGDIR)/ebtables-config; fi
+ 	rm -f ebtables-save_ ebtables.sysv_ ebtables-config_
+ 
+ tmp4:=$(shell printf $(LOCKFILE) | sed 's/\//\\\//g')
+-$(MANDIR)/man8/ebtables.8: ebtables.8
+-	mkdir -p $(DESTDIR)$(@D)
++$(DESTDIR)$(MANDIR)/man8/ebtables.8: ebtables.8
++	mkdir -p $(@D)
+ 	sed -e 's/$$(VERSION)/$(PROGVERSION)/' -e 's/$$(DATE)/$(PROGDATE)/' -e 's/$$(LOCKFILE)/$(tmp4)/' ebtables.8 > ebtables.8_
+-	install -m 0644 -o root -g root ebtables.8_ $(DESTDIR)$@
++	install -m 0644 ebtables.8_ $@
+ 	rm -f ebtables.8_
+ 
+ $(DESTDIR)$(ETHERTYPESFILE): ethertypes
+ 	mkdir -p $(@D)
+-	install -m 0644 -o root -g root $< $@
++	install -m 0644 $< $@
+ 
+ .PHONY: exec
+ exec: ebtables ebtables-restore
+ 	mkdir -p $(DESTDIR)$(BINDIR)
+-	install -m 0755 -o root -g root $(PROGNAME) $(DESTDIR)$(BINDIR)/$(PROGNAME)
+-	install -m 0755 -o root -g root ebtables-restore $(DESTDIR)$(BINDIR)/ebtables-restore
++	install -m 0755 $(PROGNAME) $(DESTDIR)$(BINDIR)/$(PROGNAME)
++	install -m 0755 ebtables-restore $(DESTDIR)$(BINDIR)/ebtables-restore
+ 
+ .PHONY: install
+-install: $(MANDIR)/man8/ebtables.8 $(DESTDIR)$(ETHERTYPESFILE) exec scripts
++install: $(DESTDIR)$(MANDIR)/man8/ebtables.8 $(DESTDIR)$(ETHERTYPESFILE) exec scripts
+ 	mkdir -p $(DESTDIR)$(LIBDIR)
+ 	install -m 0755 extensions/*.so $(DESTDIR)$(LIBDIR)
+ 	install -m 0755 *.so $(DESTDIR)$(LIBDIR)
+@@ -205,18 +207,18 @@
+ 	rm -f extensions/ebt_inat.c
+ 	rm -rf $(CVSDIRS)
+ 	mkdir -p include/linux/netfilter_bridge
+-	install -m 0644 -o root -g root \
++	install -m 0644 \
+ 		$(KERNEL_INCLUDES)/linux/netfilter_bridge.h include/linux/
+ # To keep possible compile error complaints about undefined ETH_P_8021Q
+ # off my back
+-	install -m 0644 -o root -g root \
++	install -m 0644 \
+ 		$(KERNEL_INCLUDES)/linux/if_ether.h include/linux/
+-	install -m 0644 -o root -g root \
++	install -m 0644 \
+ 		$(KERNEL_INCLUDES)/linux/types.h include/linux/
+-	install -m 0644 -o root -g root \
++	install -m 0644 \
+ 		$(KERNEL_INCLUDES)/linux/netfilter_bridge/*.h \
+ 		include/linux/netfilter_bridge/
+-	install -m 0644 -o root -g root \
++	install -m 0644 \
+ 		include/ebtables.h include/linux/netfilter_bridge/
+ 	make clean
+ 	touch *

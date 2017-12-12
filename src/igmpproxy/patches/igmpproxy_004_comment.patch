@@ -1,0 +1,30 @@
+diff -rc igmpproxy-0.1.orig/src/config.c igmpproxy-0.1/src/config.c
+*** igmpproxy-0.1.orig/src/config.c	2011-11-30 14:01:53.000000000 -0800
+--- igmpproxy-0.1/src/config.c	2011-11-30 14:43:10.398856142 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  /*
+  **  igmpproxy - IGMP proxy based multicast router 
+  **  Copyright (C) 2005 Johnny Egeland <johnny@rlo.org>
+diff -rc igmpproxy-0.1.orig/src/igmp.c igmpproxy-0.1/src/igmp.c
+*** igmpproxy-0.1.orig/src/igmp.c	2011-11-30 14:01:53.000000000 -0800
+--- igmpproxy-0.1/src/igmp.c	2011-11-30 14:43:10.414857211 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  /*
+  **  igmpproxy - IGMP proxy based multicast router 
+  **  Copyright (C) 2005 Johnny Egeland <johnny@rlo.org>
+diff -rc igmpproxy-0.1.orig/src/igmpproxy.c igmpproxy-0.1/src/igmpproxy.c
+*** igmpproxy-0.1.orig/src/igmpproxy.c	2011-11-30 14:01:53.000000000 -0800
+--- igmpproxy-0.1/src/igmpproxy.c	2011-11-30 14:43:10.386856104 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  /*
+  **  igmpproxy - IGMP proxy based multicast router 
+  **  Copyright (C) 2005 Johnny Egeland <johnny@rlo.org>

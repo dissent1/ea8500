@@ -1,0 +1,29 @@
+diff -Nur ppp_old/pppd/ipv6cp.c ppp_new/pppd/ipv6cp.c
+--- ppp_old/pppd/ipv6cp.c	2015-07-03 17:16:00.042348874 +0800
++++ ppp_new/pppd/ipv6cp.c	2015-07-03 17:21:11.782349895 +0800
+@@ -1,3 +1,4 @@
++/* Modifications were made by Belkin International, Inc. on or before Fri Sep 13 14:13:39 PDT 2013 */
+ /*
+  * ipv6cp.c - PPP IPV6 Control Protocol.
+  *
+@@ -522,6 +523,8 @@
+     wo->req_ifaceid = wo->neg_ifaceid && ipv6cp_allowoptions[f->unit].neg_ifaceid;
+     
+     if (!wo->opt_local) {
++    /*only reset ourid when its value is zero because most time it has an default value*/
++    if(eui64_iszero(wo->ourid))
+ 	eui64_magic_nz(wo->ourid);
+     }
+     
+@@ -1117,8 +1120,9 @@
+ 		wo->opt_remote = 1;
+ 	}
+     }
+-
+-    if (demand && (eui64_iszero(wo->ourid) || eui64_iszero(wo->hisid))) {
++    /*we don't need to know remote ifaceid now as peer will tell us its value in later negotiation*/
++    //if (demand && (eui64_iszero(wo->ourid) || eui64_iszero(wo->hisid))) {
++    if (demand && (eui64_iszero(wo->ourid) )) {
+ 	option_error("local/remote LL address required for demand-dialling\n");
+ 	exit(1);
+     }

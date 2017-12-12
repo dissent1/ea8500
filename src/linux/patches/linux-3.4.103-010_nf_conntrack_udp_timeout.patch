@@ -1,0 +1,20 @@
+diff -Nuar linux-3.4.103.orig/net/netfilter/nf_conntrack_proto_udp.c linux-3.4.103/net/netfilter/nf_conntrack_proto_udp.c
+--- linux-3.4.103.orig/net/netfilter/nf_conntrack_proto_udp.c	2015-03-05 13:41:45.259700613 +0800
++++ linux-3.4.103/net/netfilter/nf_conntrack_proto_udp.c	2015-03-05 13:44:23.000000000 +0800
+@@ -5,6 +5,7 @@
+  * it under the terms of the GNU General Public License version 2 as
+  * published by the Free Software Foundation.
+  */
++/* Modifications were made by Linksys on or before Mon Oct 27 15:59:06 CST 2014 */
+ 
+ #include <linux/types.h>
+ #include <linux/timer.h>
+@@ -32,7 +33,7 @@
+ };
+ 
+ static unsigned int udp_timeouts[UDP_CT_MAX] = {
+-	[UDP_CT_UNREPLIED]	= 30*HZ,
++	[UDP_CT_UNREPLIED]	= 61*HZ,
+ 	[UDP_CT_REPLIED]	= 180*HZ,
+ };
+ 

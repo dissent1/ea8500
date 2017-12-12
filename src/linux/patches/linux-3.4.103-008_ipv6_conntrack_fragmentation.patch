@@ -1,0 +1,67 @@
+diff -Nur linux.orig/net/ipv6/netfilter/nf_conntrack_reasm.c linux.new/net/ipv6/netfilter/nf_conntrack_reasm.c
+--- linux.orig/net/ipv6/netfilter/nf_conntrack_reasm.c	2012-11-30 12:41:17.329010479 -0800
++++ linux.new/net/ipv6/netfilter/nf_conntrack_reasm.c	2012-11-30 12:51:04.329260335 -0800
+@@ -14,6 +14,8 @@
+  * 2 of the License, or (at your option) any later version.
+  */
+ 
++/* modified by Cisco Systems, Inc. on 11/30/2012 */
++
+ #include <linux/errno.h>
+ #include <linux/types.h>
+ #include <linux/string.h>
+@@ -64,6 +66,8 @@
+ 	u32			user;
+ 	struct in6_addr		saddr;
+ 	struct in6_addr		daddr;
++        int			iif;
++        struct net_device*      dev;
+ 
+ 	unsigned int		csum;
+ 	__u16			nhoffset;
+@@ -148,6 +152,29 @@
+ 		goto out;
+ 
+ 	fq_kill(fq);
++/*
++ * enright@cisco.com 06/29/2011
++ * send icmp time exceeded message to source
++ * Note that this patch isnt updating MIBs, and it is kind of a hack
++ * so once the netfilter code is properly supporting time exceeded for fragment reassembly
++ * make sure to not apply this patch
++ */
++	/* Don't send error if the first segment did not arrive. */
++	if (!(fq->q.last_in & INET_FRAG_FIRST_IN) || !fq->q.fragments)
++		goto out;
++
++	/*
++	 * Only search router table for the head fragment,
++	 * when defraging timeout at PRE_ROUTING HOOK.
++	 */
++	if (fq->user == IP6_DEFRAG_CONNTRACK_IN) {
++		struct sk_buff *head = fq->q.fragments;
++
++		head->dev = fq->dev;
++
++		/* Send an ICMP "Fragment Reassembly Timeout" message. */
++		icmpv6_send(head, ICMPV6_TIME_EXCEED, ICMPV6_EXC_FRAGTIME, 0);
++	}
+ 
+ out:
+ 	spin_unlock(&fq->q.lock);
+@@ -302,6 +329,15 @@
+ 	else
+ 		fq->q.fragments = skb;
+ 
++        /*
++         * enright@cisco.com 06/29/2011
++         * Save incoming interface info for use if fragment timer expires
++         */
++        if (skb->dev) {
++                fq->iif = skb->dev->ifindex;
++                fq->dev = skb->dev;
++         }
++
+ 	skb->dev = NULL;
+ 	fq->q.stamp = skb->tstamp;
+ 	fq->q.meat += skb->len;

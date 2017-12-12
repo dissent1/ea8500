@@ -1,0 +1,10 @@
+--- linux/net/ipv4/ip_forward.c	2014-12-09 14:07:18.989901447 -0800
++++ linux-3.4.103/net/ipv4/ip_forward.c	2014-12-11 14:52:42.641698280 -0800
+@@ -26,6 +26,7 @@
+ #include <linux/icmp.h>
+ #include <linux/netdevice.h>
+ #include <linux/slab.h>
++#include <linux/export.h>
+ #include <net/sock.h>
+ #include <net/ip.h>
+ #include <net/tcp.h>

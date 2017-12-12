@@ -1,0 +1,64 @@
+diff -Nur linux4.orig/net/ipv4/ip_output.c linux4.new/net/ipv4/ip_output.c
+--- linux4.orig/net/ipv4/ip_output.c	2012-09-28 16:01:30.911276982 -0700
++++ linux4.new/net/ipv4/ip_output.c	2012-10-01 12:29:28.153247671 -0700
+@@ -41,6 +41,12 @@
+  *					datagrams.
+  *		Hirokazu Takahashi:	sendfile() on UDP works now.
+  */
++/*
++ * Modification is to bypass ipv4 fragmentation if the output interface is the dslite interface.
++ * This is done to allow dslite to fragment ipv6 packets.
++ */
++/* modified by Cisco Systems, Inc. on 09/28/2012 */
++
+ 
+ #include <asm/uaccess.h>
+ #include <asm/system.h>
+@@ -230,7 +236,11 @@
+ 		return dst_output(skb);
+ 	}
+ #endif
+-	if (skb->len > ip_skb_dst_mtu(skb) && !skb_is_gso(skb))
++        // Cisco Systems. Don't fragment ipv4 packets headed for the dslite tunnel
++        // Note that the interface name is hardcoded to dslite, so the tunnel name must be dslite in tunnel creation code
++        if ( skb->len > ip_skb_dst_mtu(skb) && 0 == strcmp(skb->dev->name, "dslite") )
++                return ip_finish_output2(skb);
++        else if (skb->len > ip_skb_dst_mtu(skb) && !skb_is_gso(skb))
+ 		return ip_fragment(skb, ip_finish_output2);
+ 	else
+ 		return ip_finish_output2(skb);
+diff -Nur linux4.orig/net/ipv6/ip6_tunnel.c linux4.new/net/ipv6/ip6_tunnel.c
+--- linux4.orig/net/ipv6/ip6_tunnel.c	2012-09-28 16:01:59.355277382 -0700
++++ linux4.new/net/ipv6/ip6_tunnel.c	2012-09-28 17:24:36.403027397 -0700
+@@ -18,6 +18,13 @@
+  *
+  */
+ 
++/* modified by Cisco Systems, Inc. on 09/28/2012 */
++/* 
++ * Modification is to bypass ipv4 fragmentation if the output interface is the dslite interface.
++ * This is done to allow dslite to fragment ipv6 packets.
++ */
++
++
+ #include <linux/module.h>
+ #include <linux/capability.h>
+ #include <linux/errno.h>
+@@ -887,9 +894,14 @@
+ 	if (skb_dst(skb))
+ 		skb_dst(skb)->ops->update_pmtu(skb_dst(skb), mtu);
+ 	if (skb->len > mtu) {
+-		*pmtu = mtu;
+-		err = -EMSGSIZE;
+-		goto tx_err_dst_release;
++/* 
++ *  Cisco Systems Inc. 08/28/2012 This code is only used for dslite tunnel so we change behavior to
++ *  mark the sk_buff as fragmentable and continue
++ */
++            skb->local_df =1;
++//		*pmtu = mtu;
++//		err = -EMSGSIZE;
++//		goto tx_err_dst_release;
+ 	}
+ 
+ 	/*

@@ -1,0 +1,95 @@
+diff -Naur linux-3.4.103.orig/include/net/neighbour.h linux-3.4.103/include/net/neighbour.h
+--- linux-3.4.103.orig/include/net/neighbour.h	2016-05-10 17:00:53.030564784 -0700
++++ linux-3.4.103/include/net/neighbour.h	2016-05-06 14:32:30.000000000 -0700
+@@ -179,6 +179,11 @@
+ 	struct neigh_hash_table __rcu *nht;
+ 	struct pneigh_entry	**phash_buckets;
+ };
++	
++struct neigh_mac_update {
++	unsigned char old_mac[ALIGN(MAX_ADDR_LEN, sizeof(unsigned long))];
++	unsigned char update_mac[ALIGN(MAX_ADDR_LEN, sizeof(unsigned long))];
++	};
+ 
+ #define NEIGH_PRIV_ALIGN	sizeof(long long)
+ 
+@@ -251,6 +256,9 @@
+ extern void __neigh_for_each_release(struct neigh_table *tbl, int (*cb)(struct neighbour *));
+ extern void pneigh_for_each(struct neigh_table *tbl, void (*cb)(struct pneigh_entry *));
+ 
++extern void neigh_mac_update_register_notify(struct notifier_block *nb);
++extern void neigh_mac_update_unregister_notify(struct notifier_block *nb);
++
+ struct neigh_seq_state {
+ 	struct seq_net_private p;
+ 	struct neigh_table *tbl;
+diff -Naur linux-3.4.103.orig/net/core/neighbour.c linux-3.4.103/net/core/neighbour.c
+--- linux-3.4.103.orig/net/core/neighbour.c	2016-05-10 17:00:10.238564891 -0700
++++ linux-3.4.103/net/core/neighbour.c	2016-05-06 14:41:24.000000000 -0700
+@@ -1055,7 +1055,20 @@
+ 	}
+ }
+ 
++ATOMIC_NOTIFIER_HEAD(neigh_mac_update_notifier_list);
++ 
++void neigh_mac_update_register_notify(struct notifier_block *nb)
++{
++	atomic_notifier_chain_register(&neigh_mac_update_notifier_list, nb);
++}
++EXPORT_SYMBOL_GPL(neigh_mac_update_register_notify);
+ 
++void neigh_mac_update_unregister_notify(struct notifier_block *nb)
++{
++	atomic_notifier_chain_unregister(&neigh_mac_update_notifier_list, nb);
++}
++EXPORT_SYMBOL_GPL(neigh_mac_update_unregister_notify);
++ 
+ 
+ /* Generic update routine.
+    -- lladdr is new lladdr or NULL, if it is not supplied.
+@@ -1086,6 +1099,7 @@
+ 	int notify = 0;
+ 	struct net_device *dev;
+ 	int update_isrouter = 0;
++	struct neigh_mac_update nmu;
+ 
+ 	write_lock_bh(&neigh->lock);
+ 
+@@ -1093,6 +1107,8 @@
+ 	old    = neigh->nud_state;
+ 	err    = -EPERM;
+ 
++	memset(&nmu, 0, sizeof(struct neigh_mac_update));
++
+ 	if (!(flags & NEIGH_UPDATE_F_ADMIN) &&
+ 	    (old & (NUD_NOARP | NUD_PERMANENT)))
+ 		goto out;
+@@ -1121,7 +1137,11 @@
+ 		   and a new address is proposed:
+ 		   - compare new & old
+ 		   - if they are different, check override flag
+-		 */
++		   - copy old and new addresses for neigh update notification
++ 		 */
++		memcpy(nmu.old_mac, neigh->ha, dev->addr_len);
++		memcpy(nmu.update_mac, lladdr, dev->addr_len);
++		
+ 		if ((old & NUD_VALID) &&
+ 		    !memcmp(lladdr, neigh->ha, dev->addr_len))
+ 			lladdr = neigh->ha;
+@@ -1219,9 +1239,12 @@
+ 	}
+ 	write_unlock_bh(&neigh->lock);
+ 
+-	if (notify)
+-		neigh_update_notify(neigh);
+-
++	if (notify) {
++ 		neigh_update_notify(neigh);
++		atomic_notifier_call_chain(&neigh_mac_update_notifier_list, 0,
++					   (struct neigh_mac_update *)&nmu);
++	}
++		
+ 	return err;
+ }
+ EXPORT_SYMBOL(neigh_update);

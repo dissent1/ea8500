@@ -1,0 +1,27 @@
+diff -Naur dnsmasq-2.55-old/src/rfc2131.c dnsmasq-2.55/src/rfc2131.c
+--- dnsmasq-2.55-old/src/rfc2131.c	2011-05-30 12:56:13.384626000 +0800
++++ dnsmasq-2.55/src/rfc2131.c	2011-05-30 12:50:54.933482000 +0800
+@@ -1644,9 +1644,11 @@
+     memcpy(&a, addr, sizeof(a));
+   
+   print_mac(daemon->namebuff, ext_mac, mac_len);
+-  
+-  if(daemon->options & OPT_LOG_OPTS)
+-     my_syslog(MS_DHCP | LOG_INFO, "%u %s(%s) %s%s%s %s",
++
++  /* Changed the log priority here from LOG_INFO to LOG_NOTICE
++	 So that these logs can be shown up on WebUI Log Menu */  
++  if(daemon->options & OPT_LOG_OPTS)	 
++     my_syslog(MS_DHCP | LOG_NOTICE, "%u %s(%s) %s%s%s %s",
+ 	       ntohl(xid), 
+ 	       type,
+ 	       interface, 
+@@ -1655,7 +1657,7 @@
+ 	       daemon->namebuff,
+ 	       string ? string : "");
+   else
+-    my_syslog(MS_DHCP | LOG_INFO, "%s(%s) %s%s%s %s",
++    my_syslog(MS_DHCP | LOG_NOTICE, "%s(%s) %s%s%s %s",
+ 	      type,
+ 	      interface, 
+ 	      addr ? inet_ntoa(a) : "",

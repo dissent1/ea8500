@@ -1,0 +1,47 @@
+--- linux/drivers/mtd/devices/msm_nand.c	2015-01-12 13:59:14.708264172 -0800
++++ linux-3.4.103/drivers/mtd/devices/msm_nand.c	2015-01-12 14:05:49.884269423 -0800
+@@ -3330,12 +3330,12 @@ msm_nand_erase(struct mtd_info *mtd, str
+ 	if (mtd->writesize == 4096)
+ 		page = instr->addr >> 12;
+ 
+-	if (instr->addr & (mtd->erasesize - 1)) {
++	if (instr->addr > (mtd->size - 1)) {
+ 		pr_err("%s: unsupported erase address, 0x%llx\n",
+ 		       __func__, instr->addr);
+ 		return -EINVAL;
+ 	}
+-	if (instr->len != mtd->erasesize) {
++	if (instr->len > mtd->size) {
+ 		pr_err("%s: unsupported erase len, %lld\n",
+ 		       __func__, instr->len);
+ 		return -EINVAL;
+@@ -3472,12 +3472,12 @@ msm_nand_erase_dualnandc(struct mtd_info
+ 	if (mtd->writesize == 8192)
+ 		page = (instr->addr >> 1) >> 12;
+ 
+-	if (instr->addr & (mtd->erasesize - 1)) {
++	if (instr->addr > (mtd->size - 1)) {
+ 		pr_err("%s: unsupported erase address, 0x%llx\n",
+ 		       __func__, instr->addr);
+ 		return -EINVAL;
+ 	}
+-	if (instr->len != mtd->erasesize) {
++	if (instr->len > mtd->size) {
+ 		pr_err("%s: unsupported erase len, %lld\n",
+ 		       __func__, instr->len);
+ 		return -EINVAL;
+@@ -5810,12 +5810,12 @@ static int msm_onenand_erase(struct mtd_
+ 	pr_info("%s: addr 0x%llx len 0x%llx\n",
+ 			__func__, instr->addr, instr->len);
+ #endif
+-	if (instr->addr & (mtd->erasesize - 1)) {
++	if (instr->addr > (mtd->size - 1)) {
+ 		pr_err("%s: Unsupported erase address, 0x%llx\n",
+ 				__func__, instr->addr);
+ 		return -EINVAL;
+ 	}
+-	if (instr->len != mtd->erasesize) {
++	if (instr->len > mtd->size) {
+ 		pr_err("%s: Unsupported erase len, %lld\n",
+ 				__func__, instr->len);
+ 		return -EINVAL;

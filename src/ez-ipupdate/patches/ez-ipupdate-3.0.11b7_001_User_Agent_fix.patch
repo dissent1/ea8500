@@ -1,0 +1,237 @@
+diff -Nur ez-ipupdate.orig/ez-ipupdate.c ez-ipupdate.new/ez-ipupdate.c
+--- ez-ipupdate.orig/ez-ipupdate.c	2009-08-25 10:40:42.000000000 -0700
++++ ez-ipupdate.new/ez-ipupdate.c	2011-07-28 09:53:48.786035075 -0700
+@@ -271,6 +271,7 @@
+ char *notify_email = NULL;
+ char *pid_file = NULL;
+ char *partner = NULL;
++char *agent = NULL;
+ 
+ static volatile int client_sockfd;
+ static volatile int last_sig = 0;
+@@ -557,6 +558,7 @@
+   CMD_pid_file,
+   CMD_offline,
+   CMD_partner,
++  CMD_agent,
+   CMD__end
+ };
+ 
+@@ -591,9 +593,47 @@
+   { CMD_connection_type, "connection-type", CONF_NEED_ARG, 1, conf_handler, "%s=<connection type>" },
+   { CMD_request,         "request",         CONF_NEED_ARG, 1, conf_handler, "%s=<request uri>" },
+   { CMD_partner,         "partner",         CONF_NEED_ARG, 1, conf_handler, "%s=<easydns partner>" },
++  { CMD_agent,         "agent",              CONF_NEED_ARG, 1, conf_handler, "%s=<easydns agent prefix>" },
+   { 0, 0, 0, 0, 0 }
+ };
+ 
++/*
++ *  enright@cisco.com
++ * we use a user-agent string that identifies this software better
++ */
++static void assign_ua(char *buf) {
++  FILE *fd =  fopen("/etc/version", "r");
++  if (NULL == fd) {
++     snprintf(buf, BUFFER_SIZE, "User-Agent: %s-%s %s [%s] (%s)\015\012",
++         "ez-update", VERSION, OS, (options & OPT_DAEMON) ? "daemon" : "", "by Angus Mackay");
++  } else {
++     char version[256];
++     if (NULL  == fgets(version, sizeof(version),fd)) {
++        snprintf(buf, BUFFER_SIZE, "User-Agent: %s-%s %s [%s] (%s)\015\012",
++            "ez-update", VERSION, OS, (options & OPT_DAEMON) ? "daemon" : "", "by Angus Mackay");
++     } else {
++        int len = strlen(version);
++        int i;
++
++        for (i=0; i<len; i++) {
++           if (isspace(version[i])) {
++              version[i] = '\0';
++              break;
++           }
++        }
++        if (agent) {
++            snprintf(buf, BUFFER_SIZE, "User-Agent: Linksys-%s-%s\015\012", agent, version);
++        }
++        else
++        {
++            snprintf(buf, BUFFER_SIZE, "User-Agent: Linksys-%s\015\012", version);
++        }
++     }
++     fclose(fd);
++  }
++}
++
++
+ /**************************************************/
+ 
+ void print_usage( void );
+@@ -780,8 +820,9 @@
+  * show_message
+  *
+  * if we are running in daemon mode then log to syslog, if not just output to
+- * stderr.
++ * stdout.
+  *
++ * menr@cisco.com changed use of stderr to stdout because it is more convenient for us
+  */
+ void show_message(char *fmt, ...)
+ {
+@@ -803,7 +844,7 @@
+   else
+   {
+ #ifdef HAVE_VFPRINTF
+-    vfprintf(stderr, fmt, args);
++    vfprintf(stdout, fmt, args);
+ #else
+     fprintf(stderr, "message incomplete because your OS sucks: %s\n", fmt);
+ #endif
+@@ -1038,6 +1079,12 @@
+       partner = strdup(optarg);
+       dprintf((stderr, "easyDNS partner: %s\n", partner));
+       break;
++      
++    case CMD_agent:
++      if(agent) { free(agent); }
++      agent = strdup(optarg);
++      dprintf((stderr, "easyDNS agent: %s\n", agent));
++      break;
+ 
+     case CMD_service_type:
+       parse_service(optarg);
+@@ -1761,8 +1808,7 @@
+   output(buf);
+   snprintf(buf, BUFFER_SIZE, "Authorization: Basic %s\015\012", auth);
+   output(buf);
+-  snprintf(buf, BUFFER_SIZE, "User-Agent: %s-%s %s [%s] (%s)\015\012", 
+-      "ez-update", VERSION, OS, (options & OPT_DAEMON) ? "daemon" : "", "by Angus Mackay");
++  assign_ua(buf);
+   output(buf);
+   snprintf(buf, BUFFER_SIZE, "Host: %s\015\012", server);
+   output(buf);
+@@ -1944,8 +1990,7 @@
+   output(buf);
+   snprintf(buf, BUFFER_SIZE, "Authorization: Basic %s\015\012", auth);
+   output(buf);
+-  snprintf(buf, BUFFER_SIZE, "User-Agent: %s-%s %s [%s] (%s)\015\012", 
+-      "ez-update", VERSION, OS, (options & OPT_DAEMON) ? "daemon" : "", "by Angus Mackay");
++  assign_ua(buf);
+   output(buf);
+   snprintf(buf, BUFFER_SIZE, "Host: %s\015\012", server);
+   output(buf);
+@@ -1982,7 +2027,7 @@
+       break;
+ 
+     case 200:
+-      if(strstr(buf, "\ngood ") != NULL)
++      if(strstr(buf, "\ngood") != NULL)
+       {
+         if(!(options & OPT_QUIET))
+         {
+@@ -2103,7 +2148,6 @@
+         }
+         else
+         {
+-          show_message("error processing request\n");
+           if(!(options & OPT_QUIET))
+           {
+             fprintf(stderr, "==== server output: ====\n%s\n", buf);
+@@ -2434,8 +2478,7 @@
+   output(buf);
+   snprintf(buf, BUFFER_SIZE, "Authorization: Basic %s\015\012", auth);
+   output(buf);
+-  snprintf(buf, BUFFER_SIZE, "User-Agent: %s-%s %s [%s] (%s)\015\012", 
+-      "ez-update", VERSION, OS, (options & OPT_DAEMON) ? "daemon" : "", "by Angus Mackay");
++  assign_ua(buf);
+   output(buf);
+   snprintf(buf, BUFFER_SIZE, "Host: %s\015\012", server);
+   output(buf);
+@@ -2571,8 +2614,7 @@
+     output(buf);
+     snprintf(buf, BUFFER_SIZE, "Authorization: Basic %s\015\012", auth);
+     output(buf);
+-    snprintf(buf, BUFFER_SIZE, "User-Agent: %s-%s %s [%s] (%s)\015\012", 
+-        "ez-update", VERSION, OS, (options & OPT_DAEMON) ? "daemon" : "", "by Angus Mackay");
++    assign_ua(buf);
+     output(buf);
+     snprintf(buf, BUFFER_SIZE, "Host: %s\015\012", server);
+     output(buf);
+@@ -2883,8 +2925,7 @@
+   output(buf);
+   snprintf(buf, BUFFER_SIZE, " HTTP/1.0\015\012");
+   output(buf);
+-  snprintf(buf, BUFFER_SIZE, "User-Agent: %s-%s %s [%s] (%s)\015\012", 
+-      "ez-update", VERSION, OS, (options & OPT_DAEMON) ? "daemon" : "", "by Angus Mackay");
++  assign_ua(buf);
+   output(buf);
+   snprintf(buf, BUFFER_SIZE, "Host: %s\015\012", server);
+   output(buf);
+@@ -3058,8 +3099,7 @@
+   output(buf);
+   snprintf(buf, BUFFER_SIZE, "Authorization: Basic %s\015\012", auth);
+   output(buf);
+-  snprintf(buf, BUFFER_SIZE, "User-Agent: %s-%s %s [%s] (%s)\015\012", 
+-      "ez-update", VERSION, OS, (options & OPT_DAEMON) ? "daemon" : "", "by Angus Mackay");
++  assign_ua(buf);
+   output(buf);
+   snprintf(buf, BUFFER_SIZE, "Host: %s\015\012", server);
+   output(buf);
+@@ -3226,8 +3266,7 @@
+   output(buf);
+   snprintf(buf, BUFFER_SIZE, "Authorization: Basic %s\015\012", auth);
+   output(buf);
+-  snprintf(buf, BUFFER_SIZE, "User-Agent: %s-%s %s [%s] (%s)\015\012", 
+-      "ez-update", VERSION, OS, (options & OPT_DAEMON) ? "daemon" : "", "by Angus Mackay");
++  assign_ua(buf);
+   output(buf);
+   snprintf(buf, BUFFER_SIZE, "Host: %s\015\012", server);
+   output(buf);
+@@ -3580,8 +3619,7 @@
+   output(buf);
+   snprintf(buf, BUFFER_SIZE, "Authorization: Basic %s\015\012", auth);
+   output(buf);
+-  snprintf(buf, BUFFER_SIZE, "User-Agent: %s-%s %s [%s] (%s)\015\012", 
+-      "ez-update", VERSION, OS, (options & OPT_DAEMON) ? "daemon" : "", "by Angus Mackay");
++  assign_ua(buf);
+   output(buf);
+   snprintf(buf, BUFFER_SIZE, "Host: %s\015\012", server);
+   output(buf);
+@@ -3730,8 +3768,7 @@
+   output(buf);
+   snprintf(buf, BUFFER_SIZE, "Authorization: Basic %s\015\012", auth);
+   output(buf);
+-  snprintf(buf, BUFFER_SIZE, "User-Agent: %s-%s %s [%s] (%s)\015\012", 
+-      "ez-update", VERSION, OS, (options & OPT_DAEMON) ? "daemon" : "", "by Angus Mackay");
++  assign_ua(buf);
+   output(buf);
+   snprintf(buf, BUFFER_SIZE, "Host: %s\015\012", server);
+   output(buf);
+@@ -3871,8 +3908,7 @@
+   output(buf);
+   snprintf(buf, BUFFER_SIZE, "Authorization: Basic %s\015\012", auth);
+   output(buf);
+-  snprintf(buf, BUFFER_SIZE, "User-Agent: %s-%s %s [%s] (%s)\015\012", 
+-      "ez-update", VERSION, OS, (options & OPT_DAEMON) ? "daemon" : "", "by Angus Mackay");
++  assign_ua(buf);
+   output(buf);
+   snprintf(buf, BUFFER_SIZE, "Host: %s\015\012", server);
+   output(buf);
+@@ -4053,8 +4089,7 @@
+   }
+   snprintf(buf, BUFFER_SIZE, " HTTP/1.0\015\012");
+   output(buf);
+-  snprintf(buf, BUFFER_SIZE, "User-Agent: %s-%s %s (%s)\015\012", 
+-      "zoneedit", VERSION, OS, "by Angus Mackay");
++  assign_ua(buf);
+   output(buf);
+   snprintf(buf, BUFFER_SIZE, "Host: %s\015\012", server);
+   output(buf);
+@@ -4187,8 +4222,7 @@
+   output(buf);
+   snprintf(buf, BUFFER_SIZE, " HTTP/1.0\015\012");
+   output(buf);
+-  snprintf(buf, BUFFER_SIZE, "User-Agent: %s-%s %s [%s] (%s)\015\012", 
+-      "ez-update", VERSION, OS, (options & OPT_DAEMON) ? "daemon" : "", "by Angus Mackay");
++  assign_ua(buf);
+   output(buf);
+   snprintf(buf, BUFFER_SIZE, "Host: %s\015\012", server);
+   output(buf);

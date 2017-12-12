@@ -1,0 +1,23 @@
+diff -Nur pppoe.orig/pppd/rp-pppoe/plugin.c pppoe.new/pppd/rp-pppoe/plugin.c
+--- pppoe.orig/pppd/plugins/rp-pppoe/plugin.c	2009-09-03 16:26:39.000000000 -0700
++++ pppoe.new/pppd/plugins/rp-pppoe/plugin.c	2009-09-03 16:36:29.000000000 -0700
+@@ -128,6 +128,19 @@
+ {
+     struct sockaddr_pppox sp;
+ 
++    /*
++     * cshen@cisco.com:
++     *
++     * Accessing acName and pppd_pppoe_service in PPPOEInitDevice()
++     *   would return null.
++     */
++    if (acName) {
++        SET_STRING(conn->acName, acName);
++    }
++    if (pppd_pppoe_service) {
++        SET_STRING(conn->serviceName, pppd_pppoe_service);
++    }
++
+     strlcpy(ppp_devnam, devnam, sizeof(ppp_devnam));
+     if (existingSession) {
+ 	unsigned int mac[ETH_ALEN];

@@ -1,0 +1,287 @@
+/* Modifications were made by Linksys on or before Mon Aug 17 16:16:45 PDT 2015 */
+diff -uprN -X linux/Documentation/dontdiff linux.158/arch/arm/mach-msm/devices-ipq806x.c linux/arch/arm/mach-msm/devices-ipq806x.c
+--- linux.158/arch/arm/mach-msm/devices-ipq806x.c	2015-06-09 12:06:52.400379405 -0700
++++ linux/arch/arm/mach-msm/devices-ipq806x.c	2015-08-10 13:00:43.479548044 -0700
+@@ -1078,6 +1079,8 @@ static struct nss_platform_data nss0_pda
+ 	.ipv4_enabled		= NSS_FEATURE_ENABLED,
+ 	.ipv4_reasm_enabled	= NSS_FEATURE_ENABLED,
+ 	.ipv6_enabled		= NSS_FEATURE_ENABLED,
++	.ipv6_reasm_enabled	= NSS_FEATURE_ENABLED,
++/* Modifications were made by Linksys on or before Mon Aug 17 16:16:45 PDT 2015 */
+ 	.l2switch_enabled	= NSS_FEATURE_ENABLED,
+ 	.crypto_enabled		= NSS_FEATURE_NOT_ENABLED,
+ 	.ipsec_enabled		= NSS_FEATURE_NOT_ENABLED,
+@@ -1121,6 +1122,7 @@ static struct nss_platform_data nss1_pda
+ 	.ipv4_enabled		= NSS_FEATURE_NOT_ENABLED,
+ 	.ipv4_reasm_enabled	= NSS_FEATURE_NOT_ENABLED,
+ 	.ipv6_enabled		= NSS_FEATURE_NOT_ENABLED,
++	.ipv6_reasm_enabled	= NSS_FEATURE_NOT_ENABLED,
+ 	.l2switch_enabled	= NSS_FEATURE_NOT_ENABLED,
+ 	.crypto_enabled		= NSS_FEATURE_ENABLED,
+ 	.ipsec_enabled		= NSS_FEATURE_ENABLED,
+diff -uprN -X linux/Documentation/dontdiff linux.158/arch/arm/mach-msm/include/mach/msm_nss.h linux/arch/arm/mach-msm/include/mach/msm_nss.h
+--- linux.158/arch/arm/mach-msm/include/mach/msm_nss.h	2015-06-09 12:06:52.584379396 -0700
++++ linux/arch/arm/mach-msm/include/mach/msm_nss.h	2015-08-10 13:00:43.491548044 -0700
+@@ -44,8 +45,10 @@ struct nss_platform_data {
+ 	uint32_t load_addr;	/* Load address of NSS firmware */
+ 	enum nss_feature_enabled turbo_frequency;	/* Does this core support turbo frequencies */
+ 	enum nss_feature_enabled ipv4_enabled;	/* Does this core handle IPv4? */
+-	enum nss_feature_enabled ipv4_reasm_enabled;	/* Does this core handle IPv4? */
++/* Modifications were made by Linksys on or before Mon Aug 17 16:16:45 PDT 2015 */
++	enum nss_feature_enabled ipv4_reasm_enabled;	/* Does this core handle IPv4 reassembly? */
+ 	enum nss_feature_enabled ipv6_enabled;	/* Does this core handle IPv6? */
++	enum nss_feature_enabled ipv6_reasm_enabled;	/* Does this core handle IPv6 reassembly? */
+ 	enum nss_feature_enabled l2switch_enabled;	/* Does this core handle L2 switch? */
+ 	enum nss_feature_enabled crypto_enabled;	/* Does this core handle crypto? */
+ 	enum nss_feature_enabled ipsec_enabled;	/* Does this core handle IPsec? */
+diff -uprN -X linux/Documentation/dontdiff linux.158/arch/arm/mach-msm/rpm_log.c linux/arch/arm/mach-msm/rpm_log.c
+--- linux.158/arch/arm/mach-msm/rpm_log.c	2015-06-09 12:06:52.604379395 -0700
++++ linux/arch/arm/mach-msm/rpm_log.c	2015-08-10 13:00:43.507548045 -0700
+@@ -64,6 +65,16 @@ msm_rpm_log_read(const struct msm_rpm_lo
+ 				+ reg * 4);
+ }
+ 
++/* Modifications were made by Linksys on or before Mon Aug 17 16:16:45 PDT 2015 */
++static void
++msm_rpm_log_write(const struct msm_rpm_log_platform_data *pdata, u32 page,
++                 u32 reg, u32 val)
++{
++	writel_relaxed(val, pdata->reg_base + pdata->reg_offsets[page]
++				+ reg * 4);
++}
++
++
+ /*
+  * msm_rpm_log_copy() - Copies messages from a volatile circular buffer in
+  *			the RPM's shared memory into a private local buffer
+@@ -109,6 +118,8 @@ static u32 msm_rpm_log_copy(const struct
+ 	while (tail_idx - head_idx > 0 && tail_idx - *read_idx > 0) {
+ 		head_idx = msm_rpm_log_read(pdata, MSM_RPM_LOG_PAGE_INDICES,
+ 					    MSM_RPM_LOG_HEAD);
++		tail_idx = msm_rpm_log_read(pdata, MSM_RPM_LOG_PAGE_INDICES,
++					    MSM_RPM_LOG_TAIL);
+ 		/* check if the message to be read is valid */
+ 		if (tail_idx - *read_idx > tail_idx - head_idx) {
+ 			*read_idx = head_idx;
+@@ -123,7 +134,8 @@ static u32 msm_rpm_log_copy(const struct
+ 			break;
+ 
+ 		msg_len = msm_rpm_log_read(pdata, MSM_RPM_LOG_PAGE_BUFFER,
+-					(*read_idx >> 2) & pdata->log_len_mask);
++					((*read_idx) & pdata->log_len_mask) >> 2);
++
+ 
+ 		/* handle messages that claim to be longer than the log */
+ 		if (PADDED_LENGTH(msg_len) > tail_idx - *read_idx - 4)
+@@ -134,7 +146,9 @@ static u32 msm_rpm_log_copy(const struct
+ 			break;
+ 
+ 		pos_start = pos;
+-		pos += scnprintf(msg_buffer + pos, buf_len - pos, "- ");
++
++		if (msg_len)
++			pos += scnprintf(msg_buffer + pos, buf_len - pos, "- ");
+ 
+ 		/* copy message payload to local buffer */
+ 		for (i = 0; i < msg_len; i++) {
+@@ -142,17 +156,24 @@ static u32 msm_rpm_log_copy(const struct
+ 			if (IS_ALIGNED(i, 4))
+ 				*((u32 *)temp) = msm_rpm_log_read(pdata,
+ 						MSM_RPM_LOG_PAGE_BUFFER,
+-						((*read_idx + 4 + i) >> 2) &
+-							pdata->log_len_mask);
++						((*read_idx + 4 + i) &
++							pdata->log_len_mask) >> 2);
+ 
+ 			pos += scnprintf(msg_buffer + pos, buf_len - pos,
+ 					 "0x%02X, ", temp[i & 0x03]);
+ 		}
+ 
+-		pos += scnprintf(msg_buffer + pos, buf_len - pos, "\n");
++		/* Set msg len to 0 after reading to avoid duplication */
++		msm_rpm_log_write(pdata, MSM_RPM_LOG_PAGE_BUFFER,
++					((*read_idx) & pdata->log_len_mask) >> 2, 0);
++
++		if (msg_len)
++			pos += scnprintf(msg_buffer + pos, buf_len - pos, "\n");
+ 
+ 		head_idx = msm_rpm_log_read(pdata, MSM_RPM_LOG_PAGE_INDICES,
+ 					    MSM_RPM_LOG_HEAD);
++		tail_idx = msm_rpm_log_read(pdata, MSM_RPM_LOG_PAGE_INDICES,
++					    MSM_RPM_LOG_TAIL);
+ 
+ 		/* roll back if message that was read is not still valid */
+ 		if (tail_idx - *read_idx > tail_idx - head_idx)
+@@ -184,14 +205,16 @@ static ssize_t msm_rpm_log_file_read(str
+ 	struct msm_rpm_log_buffer *buf;
+ 
+ 	buf = file->private_data;
+-	pdata = buf->pdata;
+-	if (!pdata)
+-		return -EINVAL;
+ 	if (!buf)
+ 		return -ENOMEM;
++
++	pdata = buf->pdata;
++	if (!pdata)
++                return -EINVAL;
++
+ 	if (!buf->data)
+ 		return -ENOMEM;
+-	if (!bufu || count < 0)
++	if (!bufu || count == 0)
+ 		return -EINVAL;
+ 	if (!access_ok(VERIFY_WRITE, bufu, count))
+ 		return -EFAULT;
+diff -uprN -X linux/Documentation/dontdiff linux.158/net/bridge/br_fdb.c linux/net/bridge/br_fdb.c
+--- linux.158/net/bridge/br_fdb.c	2015-06-09 12:07:07.332378697 -0700
++++ linux/net/bridge/br_fdb.c	2015-08-10 13:01:01.455548283 -0700
+@@ -51,7 +51,6 @@ void br_fdb_fini(void)
+ 	kmem_cache_destroy(br_fdb_cache);
+ }
+ 
+-
+ /* if topology_changing then use forward_delay (default 15 sec)
+  * otherwise keep longer (default 5 minutes)
+  */
+@@ -139,6 +139,21 @@ void br_fdb_change_mac_address(struct ne
+ 	fdb_insert(br, NULL, newaddr);
+ }
+ 
++/* Modifications were made by Linksys on or before Mon Aug 17 16:16:45 PDT 2015 */
++ATOMIC_NOTIFIER_HEAD(br_fdb_update_notifier_list);
++
++void br_fdb_update_register_notify(struct notifier_block *nb)
++{
++	atomic_notifier_chain_register(&br_fdb_update_notifier_list, nb);
++}
++EXPORT_SYMBOL_GPL(br_fdb_update_register_notify);
++
++void br_fdb_update_unregister_notify(struct notifier_block *nb)
++{
++	atomic_notifier_chain_unregister(&br_fdb_update_notifier_list, nb);
++}
++EXPORT_SYMBOL_GPL(br_fdb_update_unregister_notify);
++
+ void br_fdb_cleanup(unsigned long _data)
+ {
+ 	struct net_bridge *br = (struct net_bridge *)_data;
+@@ -156,9 +169,16 @@ void br_fdb_cleanup(unsigned long _data)
+ 			if (f->is_static)
+ 				continue;
+ 			this_timer = f->updated + delay;
+-			if (time_before_eq(this_timer, jiffies))
++			if (time_before_eq(this_timer, jiffies)) {
++				/* bridge "ageing timer expire" event call back
++				 * to registered modules
++				 */
++				atomic_notifier_call_chain(
++						&br_fdb_update_notifier_list,
++						0, (void *)f->addr.addr);
++
+ 				fdb_delete(br, f);
+-			else if (time_before(this_timer, next_timer))
++			} else if (time_before(this_timer, next_timer))
+ 				next_timer = this_timer;
+ 		}
+ 	}
+@@ -412,6 +432,43 @@ int br_fdb_insert(struct net_bridge *br,
+ 	return ret;
+ }
+ 
++static void br_fdb_refresh_stats(struct net_bridge *br,
++				struct net_bridge_port *source,
++				const unsigned char *addr)
++{
++	struct hlist_head *head = &br->hash[br_mac_hash(addr)];
++	struct net_bridge_fdb_entry *fdb;
++
++	/* some users want to always flood. */
++	if (hold_time(br) == 0)
++		return;
++
++	/* ignore packets unless we are using this port */
++	if (!(source->state == BR_STATE_LEARNING ||
++	      source->state == BR_STATE_FORWARDING))
++		return;
++
++	fdb = fdb_find_rcu(head, addr);
++	if (likely(fdb)) {
++		/* attempt to update an entry for a local interface */
++		if (unlikely(fdb->is_local)) {
++			if (net_ratelimit())
++				br_warn(br, "stats update for %s interface with"
++					" own address as source address\n",
++					source->dev->name);
++		} else {
++			if (unlikely(source != fdb->dst)) {
++				/* don't have to update stats; as it is
++				 * responsibility of linux bridge to add
++				 * new port info
++				 */
++			} else {
++				fdb->updated = jiffies;
++			}
++		}
++	}
++}
++
+ void br_fdb_update(struct net_bridge *br, struct net_bridge_port *source,
+ 		   const unsigned char *addr)
+ {
+@@ -437,7 +494,12 @@ void br_fdb_update(struct net_bridge *br
+ 					source->dev->name);
+ 		} else {
+ 			/* fastpath: update of existing entry */
+-			fdb->dst = source;
++			if (unlikely(source != fdb->dst)) {
++				fdb->dst = source;
++				atomic_notifier_call_chain(
++						&br_fdb_update_notifier_list,
++						0, (void *)addr);
++			}
+ 			fdb->updated = jiffies;
+ 		}
+ 	} else {
+@@ -468,7 +530,13 @@ void br_refresh_fdb_entry(struct net_dev
+ 	}
+ 
+ 	rcu_read_lock();
+-	br_fdb_update(p->br, p, addr);
++
++	/*
++	 * port modification/addition will only be done in linux stack path
++	 * through br_fdb_update() function; which is called in softirq context
++	 * by br_handle_frame_finish()
++	 */
++	br_fdb_refresh_stats(p->br, p, addr);
+ 	rcu_read_unlock();
+ }
+ 
+diff -uprN -X linux/Documentation/dontdiff linux.158/net/bridge/br_netlink.c linux/net/bridge/br_netlink.c
+--- linux.158/net/bridge/br_netlink.c	2015-06-09 12:07:07.336378697 -0700
++++ linux/net/bridge/br_netlink.c	2015-08-10 13:01:01.459548283 -0700
+@@ -124,7 +125,8 @@ static int br_dump_ifinfo(struct sk_buff
+ 	idx = 0;
+ 	rcu_read_lock();
+ 	for_each_netdev_rcu(net, dev) {
+-		struct net_bridge_port *port = br_port_get_rcu(dev);
++/* Modifications were made by Linksys on or before Mon Aug 17 16:16:45 PDT 2015 */
++		struct net_bridge_port *port = br_port_get_rtnl(dev);
+ 
+ 		/* not a bridge port */
+ 		if (!port || idx < cb->args[0])
+/* Modifications were made by Linksys on or before Mon Aug 17 16:13:27 PDT 2015 */
+diff -uprN linux.158/include/linux/if_bridge.h linux/include/linux/if_bridge.h
+--- linux.158/include/linux/if_bridge.h	2015-06-09 12:07:06.200378751 -0700
++++ linux/include/linux/if_bridge.h	2015-08-10 13:01:00.271548267 -0700
+@@ -106,6 +107,9 @@ extern struct net_device *br_port_dev_ge
+ extern void br_refresh_fdb_entry(struct net_device *dev, const char *addr);
+ extern void br_dev_update_stats(struct net_device *dev, struct rtnl_link_stats64 *nlstats);
+ extern bool br_fdb_has_entry(struct net_device *dev, const char *addr);
++extern void br_fdb_update_register_notify(struct notifier_block *nb);
++extern void br_fdb_update_unregister_notify(struct notifier_block *nb);
++/* Modifications were made by Linksys on or before Mon Aug 17 16:13:27 PDT 2015 */
+ 
+ typedef int br_should_route_hook_t(struct sk_buff *skb);
+ extern br_should_route_hook_t __rcu *br_should_route_hook;

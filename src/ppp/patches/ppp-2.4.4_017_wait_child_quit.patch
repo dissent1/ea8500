@@ -1,0 +1,16 @@
+--- ppp_old/pppd/main.c	2016-07-27 16:16:33.199311477 +0800
++++ ppp_new/pppd/main.c	2016-07-27 16:21:22.815309213 +0800
+@@ -598,8 +598,12 @@
+ 	}
+ 	while (n_children > 0 && !childwait_done) {
+ 	    handle_events();
+-	    if (kill_link && !childwait_done)
++	    if (kill_link && !childwait_done) {
++        /* Wait for 1 second, this is the last chance for child process to finish their job*/
++        sleep(1);
++        reap_kids();
+ 		childwait_end(NULL);
++        }
+ 	}
+     }
+ 

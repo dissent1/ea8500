@@ -1,0 +1,60 @@
+diff -Naur dosfstools-2.11.orig/dosfsck/Makefile dosfstools-2.11/dosfsck/Makefile
+--- dosfstools-2.11.orig/dosfsck/Makefile	1999-07-06 07:23:11.000000000 -0700
++++ dosfstools-2.11/dosfsck/Makefile	2011-05-09 17:39:37.525059316 -0700
+@@ -10,16 +10,16 @@
+ 	$(CC) -c $(CFLAGS) $*.c
+ 
+ install: dosfsck
+-	mkdir -p $(SBINDIR) $(MANDIR)
+-	install -m 755 dosfsck $(SBINDIR)
+-	install -m 644 dosfsck.8 $(MANDIR)
+-	rm -f $(SBINDIR)/fsck.msdos
+-	rm -f $(SBINDIR)/fsck.vfat
+-	ln -s dosfsck $(SBINDIR)/fsck.msdos
+-	ln -s dosfsck $(SBINDIR)/fsck.vfat
+-	rm -f $(MANDIR)/fsck.msdos.8
+-	ln -s dosfsck.8 $(MANDIR)/fsck.msdos.8
+-	ln -s dosfsck.8 $(MANDIR)/fsck.vfat.8
++	mkdir -p $(DESTDIR)$(SBINDIR) $(DESTDIR)$(MANDIR)
++	install -m 755 dosfsck $(DESTDIR)$(SBINDIR)
++	install -m 644 dosfsck.8 $(DESTDIR)$(MANDIR)
++	rm -f $(DESTDIR)$(SBINDIR)/fsck.msdos
++	rm -f $(DESTDIR)$(SBINDIR)/fsck.vfat
++	ln -s dosfsck $(DESTDIR)$(SBINDIR)/fsck.msdos
++	ln -s dosfsck $(DESTDIR)$(SBINDIR)/fsck.vfat
++	rm -f $(DESTDIR)$(MANDIR)/fsck.msdos.8
++	ln -s dosfsck.8 $(DESTDIR)$(MANDIR)/fsck.msdos.8
++	ln -s dosfsck.8 $(DESTDIR)$(MANDIR)/fsck.vfat.8
+ 
+ clean:
+ 	rm -f *.o *.s *.i *~ \#*# tmp_make .#* .new*
+diff -Naur dosfstools-2.11.orig/mkdosfs/Makefile dosfstools-2.11/mkdosfs/Makefile
+--- dosfstools-2.11.orig/mkdosfs/Makefile	1999-07-06 07:23:32.000000000 -0700
++++ dosfstools-2.11/mkdosfs/Makefile	2011-05-09 17:40:13.004978550 -0700
+@@ -10,16 +10,16 @@
+ 	$(CC) $(CFLAGS) -c $< -o $@
+ 
+ install: mkdosfs
+-	mkdir -p $(SBINDIR) $(MANDIR)
+-	install -m 755 mkdosfs $(SBINDIR)
+-	install -m 644 mkdosfs.8 $(MANDIR)
+-	rm -f $(SBINDIR)/mkfs.msdos
+-	rm -f $(SBINDIR)/mkfs.vfat
+-	ln -s mkdosfs $(SBINDIR)/mkfs.msdos
+-	ln -s mkdosfs $(SBINDIR)/mkfs.vfat
+-	rm -f $(MANDIR)/mkfs.msdos.8
+-	ln -s mkdosfs.8 $(MANDIR)/mkfs.msdos.8
+-	ln -s mkdosfs.8 $(MANDIR)/mkfs.vfat.8
++	mkdir -p $(DESTDIR)$(SBINDIR) $(DESTDIR)$(MANDIR)
++	install -m 755 mkdosfs $(DESTDIR)$(SBINDIR)
++	install -m 644 mkdosfs.8 $(DESTDIR)$(MANDIR)
++	rm -f $(DESTDIR)$(SBINDIR)/mkfs.msdos
++	rm -f $(DESTDIR)$(SBINDIR)/mkfs.vfat
++	ln -s mkdosfs $(DESTDIR)$(SBINDIR)/mkfs.msdos
++	ln -s mkdosfs $(DESTDIR)$(SBINDIR)/mkfs.vfat
++	rm -f $(DESTDIR)$(MANDIR)/mkfs.msdos.8
++	ln -s mkdosfs.8 $(DESTDIR)$(MANDIR)/mkfs.msdos.8
++	ln -s mkdosfs.8 $(DESTDIR)$(MANDIR)/mkfs.vfat.8
+ 
+ clean :
+ 	echo *.o *.i *.s *~ \#*# core .#* .new*

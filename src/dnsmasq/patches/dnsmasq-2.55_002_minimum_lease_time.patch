@@ -1,0 +1,27 @@
+diff -Nur dnsmasq.orig/src/option.c dnsmasq.new/src/option.c
+--- dnsmasq.orig/src/option.c	2010-07-08 18:46:02.916285613 -0700
++++ dnsmasq.new/src/option.c	2010-07-08 19:23:32.800285667 -0700
+@@ -1883,8 +1883,9 @@
+ 		    new->lease_time = atoi(a[leasepos]) * fac;
+ 		    /* Leases of a minute or less confuse
+ 		       some clients, notably Apple's */
+-		    if (new->lease_time < 120)
+-		      new->lease_time = 120;
++                    /* enright@cisco.com. We think this is no longer a problem */
++		    if (new->lease_time < 60)
++		      new->lease_time = 60;
+ 		  }
+ 	      }
+ 	  }
+@@ -2027,8 +2028,9 @@
+ 		  new->lease_time = atoi(a[j]) * fac; 
+ 		  /* Leases of a minute or less confuse
+ 		     some clients, notably Apple's */
+-		  if (new->lease_time < 120)
+-		    new->lease_time = 120;
++                  /* enright@cisco.com. We think this is no longer a problem */
++		  if (new->lease_time < 60)
++		    new->lease_time = 60;
+ 		  new->flags |= CONFIG_TIME;
+ 		}
+ 	    }

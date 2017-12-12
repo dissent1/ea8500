@@ -1,0 +1,15 @@
+diff -u ez-ipupdate-3.0.11b7/conf_file.c temp/conf_file.c
+--- ez-ipupdate-3.0.11b7/conf_file.c	2000-10-22 19:36:18.000000000 -0700
++++ temp/conf_file.c	2008-12-03 10:12:08.000000000 -0800
+@@ -38,7 +38,10 @@
+ #include <conf_file.h>
+ 
+ #if HAVE_STRERROR
+-extern int errno;
++// enright@cisco.com
++// prevent mismatch at compile time
++//extern int errno;
++#include <errno.h>
+ #  define error_string strerror(errno)
+ #elif HAVE_SYS_ERRLIST
+ extern const char *const sys_errlist[];

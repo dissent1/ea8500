@@ -1,0 +1,24 @@
+diff -Naur libnfnetlink-1.0.0.orig/include/libnfnetlink/libnfnetlink.h libnfnetlink-1.0.0/include/libnfnetlink/libnfnetlink.h
+--- libnfnetlink-1.0.0.orig/include/libnfnetlink/libnfnetlink.h	2009-06-13 08:17:56.000000000 -0700
++++ libnfnetlink-1.0.0/include/libnfnetlink/libnfnetlink.h	2013-10-15 11:08:38.369393697 -0700
+@@ -1,3 +1,4 @@
++/* Modifications were made by Linksys on or before Tue Oct 15 11:08:26 PDT 2013 */
+ /* libnfnetlink.h: Header file for generic netfilter netlink interface
+  *
+  * (C) 2002 Harald Welte <laforge@gnumonks.org>
+@@ -8,6 +9,7 @@
+  * 	Define NETLINK_NETFILTER if it's undefined
+  */
+ 
++/* Modifications were made by Linksys on or before Tue Oct 15 11:08:38 PDT 2013 */
+ #ifndef __LIBNFNETLINK_H
+ #define __LIBNFNETLINK_H
+ 
+@@ -16,6 +18,7 @@
+ #endif
+ 
+ #include <sys/socket.h>	/* for sa_family_t */
++#include <linux/types.h>
+ #include <linux/netlink.h>
+ #include <libnfnetlink/linux_nfnetlink.h>
+ 

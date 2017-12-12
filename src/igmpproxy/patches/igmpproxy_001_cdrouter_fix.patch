@@ -1,0 +1,38 @@
+diff -urN igmpproxy-0.1/src/config.c igmpproxy-0.1-new/src/config.c
+--- igmpproxy-0.1/src/config.c	2011-06-14 12:23:52.000000000 +0800
++++ igmpproxy-0.1-new/src/config.c	2011-06-13 21:59:13.000000000 +0800
+@@ -76,7 +76,7 @@
+ 
+     // Default values for leave intervals...
+     commonConfig.lastMemberQueryInterval = INTERVAL_QUERY_RESPONSE;
+-    commonConfig.lastMemberQueryCount    = DEFAULT_ROBUSTNESS;
++    commonConfig.lastMemberQueryCount    = DEFAULT_THRESHOLD;
+ 
+     // If 1, a leave message is sent upstream on leave messages from downstream.
+     commonConfig.fastUpstreamLeave = 0;
+diff -urN igmpproxy-0.1/src/igmp.c igmpproxy-0.1-new/src/igmp.c
+--- igmpproxy-0.1/src/igmp.c	2009-05-14 03:43:18.000000000 +0800
++++ igmpproxy-0.1-new/src/igmp.c	2011-06-13 21:07:37.000000000 +0800
+@@ -138,12 +138,18 @@
+                     inetFmt(src, s1), inetFmt(dst, s2));
+                 return;
+             }
+-            else if(!isAdressValidForIf(checkVIF, src)) {
+-                my_log(LOG_WARNING, 0, "The source address %s for group %s, is not in any valid net for upstream VIF.",
+-                    inetFmt(src, s1), inetFmt(dst, s2));
++//            else if(!isAdressValidForIf(checkVIF, src)) {
++//                my_log(LOG_WARNING, 0, "The source address %s for group %s, is not in any valid net for upstream VIF.",
++//                    inetFmt(src, s1), inetFmt(dst, s2));
++//                return;
++//           }
++            checkVIF = getIfByAddress(src); //Fixed CDRouter bug,Sijun Wu, Cisco Systems, Inc.,2011-06-13
++            if(checkVIF && (checkVIF->state == IF_STATE_DOWNSTREAM)) {
++                my_log(LOG_NOTICE, 0, "Route activation request : %s is from downstream interface. Ignoring.",
++                    inetFmt(src, s1));
+                 return;
+             }
+-            
++
+             // Activate the route.
+             my_log(LOG_DEBUG, 0, "Route activate request from %s to %s",
+ 		    inetFmt(src,s1), inetFmt(dst,s2));

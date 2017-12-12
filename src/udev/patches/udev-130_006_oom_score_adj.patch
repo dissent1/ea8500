@@ -1,0 +1,12 @@
+diff -Naur udev-130.orig/udev/udevd.c udev-130/udev/udevd.c
+--- udev-130.orig/udev/udevd.c	2012-09-10 14:30:11.614256133 -0700
++++ udev-130/udev/udevd.c	2012-09-10 14:31:29.950757363 -0700
+@@ -948,7 +948,7 @@
+ 	setsid();
+ 
+ 	/* OOM_DISABLE == -17 */
+-	fd = open("/proc/self/oom_adj", O_RDWR);
++	fd = open("/proc/self/oom_score_adj", O_RDWR);
+ 	if (fd < 0)
+ 		err(udev, "error disabling OOM: %m\n");
+ 	else {

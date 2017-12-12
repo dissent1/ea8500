@@ -1,0 +1,44 @@
+
+LINUX = $(wildcard $(pwd)/../linux/extracted/*/include)
+
+ifndef EXPORT_ONLY
+
+ifeq ($(toolchain_name),arm-2007q1)
+	IMAGE=uImage
+endif
+
+ifeq ($(toolchain_name),mipsel-linux-gcc463)
+	IMAGE=zImage
+endif
+
+ifeq ($(toolchain_name),mipsel-brcm-gcc423)
+	# IMAGE=zImage
+	# DEPENDS=lzma
+	# commented out for focus, which stinks because now I have to get the toolchain working
+	# or this is not portable to brcm hardware - bleh - mfmfm???
+	IMAGE=
+endif
+
+ifeq ($(toolchain_name),ia32-2010.09)
+	IMAGE=bzImage
+endif
+
+ifeq ($(toolchain_name),arm-brcm-linux-uclibcgnueabi)
+	IMAGE=zImage
+	DEPENDS=lzma
+	patch = for n in ../../patches/*_0* ../../patches/*-0*; do patch -p$(patchlevel) < $$n || exit 1; done > ../../.patchlog
+endif
+
+ifeq ($(toolchain_name),armv7-marvell-linux-gnueabi-softfp_64k)
+	patch = for n in ../../patches/linux-3.10.39-c*.patch ../../patches/linux-3.10.39-0*.patch; do patch -p$(patchlevel) < $$n || exit 1; done > ../../.patchlog
+endif
+
+	depends = $(DEPENDS)
+ifeq ($(toolchain_name),armv7-qca-gcc463-linaro)
+	patch = for n in ../../patches/linux-3.4.103-wraith* ../../patches/linux-3.4.103-0*; do patch -p$(patchlevel) < $$n || exit 1; done > ../../.patchlog
+	configure = chmod +x scripts/gcc-wrapper.py && cp -f ../../$(dir).config .config
+else
+	configure = ln -sf ../brcm_bsp/extracted/brcm_bsp ../../brcm-bsp && cp -f ../../$(dir).config .config
+endif
+	build = PACKAGE_DEPEND=$(pwd)/../lzma ARCH=$(ARCH) REUSE_PREBUILT_WL=1 KBUILD_VERBOSE=1 make CROSS_COMPILE=$(CROSS_COMPILE) $(IMAGE) modules
+endif

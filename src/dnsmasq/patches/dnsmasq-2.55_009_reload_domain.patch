@@ -1,0 +1,56 @@
+diff -Naur dnsmasq-2.55.orig/src/dnsmasq.c dnsmasq-2.55/src/dnsmasq.c
+--- dnsmasq-2.55.orig/src/dnsmasq.c	2011-08-31 17:39:51.174411000 +0800
++++ dnsmasq-2.55/src/dnsmasq.c	2011-08-31 17:41:19.000000000 +0800
+@@ -951,6 +951,8 @@
+       static int warned = 0;
+       if (reload_servers(latest->name))
+ 	{
++ 
++	  reload_domain(latest->name);
+ 	  my_syslog(LOG_INFO, _("reading %s"), latest->name);
+ 	  warned = 0;
+ 	  check_servers();
+diff -Naur dnsmasq-2.55.orig/src/dnsmasq.h dnsmasq-2.55/src/dnsmasq.h
+--- dnsmasq-2.55.orig/src/dnsmasq.h	2011-08-31 17:39:51.150407000 +0800
++++ dnsmasq-2.55/src/dnsmasq.h	2011-08-31 17:41:29.000000000 +0800
+@@ -819,6 +819,7 @@
+ int random_sock(int family);
+ void pre_allocate_sfds(void);
+ int reload_servers(char *fname);
++void reload_domain(char *fname);
+ void check_servers(void);
+ int enumerate_interfaces();
+ struct listener *create_wildcard_listeners(void);
+diff -Naur dnsmasq-2.55.orig/src/option.c dnsmasq-2.55/src/option.c
+--- dnsmasq-2.55.orig/src/option.c	2011-08-31 17:39:51.155410000 +0800
++++ dnsmasq-2.55/src/option.c	2011-08-31 17:41:42.000000000 +0800
+@@ -3192,3 +3192,29 @@
+       exit(0);
+     }
+ }  
++
++
++void reload_domain(char *fname)
++{
++      char *line;
++      FILE *f;
++
++      if (!(f = fopen(fname, "r")))
++		return;
++      
++      while ((line = fgets(daemon->namebuff, MAXDNAME, f)))
++	{
++	  char *token = strtok(line, " \t\n\r");
++	  
++	  if (!token || strcmp(token, "search") != 0)
++	    continue;
++	  
++	  if ((token = strtok(NULL, " \t\n\r")) &&  
++	      (daemon->domain_suffix = canonicalise_opt(token)))
++	    break;
++	}
++
++      fclose(f);
++}
++
++

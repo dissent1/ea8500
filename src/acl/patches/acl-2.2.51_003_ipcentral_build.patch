@@ -1,0 +1,26 @@
+diff -Naur acl-2.2.51.orig/include/config.h.in acl-2.2.51/include/config.h.in
+--- acl-2.2.51.orig/include/config.h.in	2010-01-22 15:00:28.000000000 -0800
++++ acl-2.2.51/include/config.h.in	2013-12-05 11:24:23.924261033 -0800
+@@ -1,3 +1,4 @@
++/* Modifications were made by Linksys on or before Thu Dec  5 11:24:23 PST 2013 */
+ /*
+  * Copyright (c) 2002 Silicon Graphics, Inc.  All Rights Reserved.
+  *
+@@ -39,14 +40,14 @@
+ /* Define if you want gettext (I18N) support */
+ #undef ENABLE_GETTEXT
+ 
+-#ifdef ENABLE_GETTEXT
++/*#ifdef ENABLE_GETTEXT
+ # include <libintl.h>
+ # define _(x)			gettext(x)
+-#else
++#else*/
+ # define _(x)			(x)
+ # define textdomain(d)		do { } while (0)
+ # define bindtextdomain(d,dir)	do { } while (0)
+-#endif
++/*#endif*/
+ #include <locale.h>
+ 
+ /* On GNU/kFreeBSD, ENODATA is not defined in the system headers */

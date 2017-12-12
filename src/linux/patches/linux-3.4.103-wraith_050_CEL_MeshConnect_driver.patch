@@ -1,0 +1,19 @@
+diff -Naur linux-3.2.40.orig/drivers/usb/serial/cp210x.c linux-3.2.40/drivers/usb/serial/cp210x.c
+--- linux-3.2.40.orig/drivers/usb/serial/cp210x.c	2013-03-05 19:24:30.000000000 -0800
++++ linux-3.2.40/drivers/usb/serial/cp210x.c	2014-12-01 08:08:04.492001555 -0800
+@@ -1,3 +1,4 @@
++/* Modifications were made by Linksys on or before Mon Dec  1 08:06:43 PST 2014 */
+ /*
+  * Silicon Laboratories CP210x USB to RS232 serial adaptor driver
+  *
+@@ -160,6 +161,10 @@
+ 	{ USB_DEVICE(0x3195, 0xF280) }, /* Link Instruments MSO-28 */
+ 	{ USB_DEVICE(0x3195, 0xF281) }, /* Link Instruments MSO-28 */
+ 	{ USB_DEVICE(0x413C, 0x9500) }, /* DW700 GPS USB interface */
++	/* add support for CEL MeshConnect Zigbee module */
++	{ USB_DEVICE(0x10C4, 0x8856) }, /* CEL EM357 ZigBee USB Stick, Long Range */	
++	{ USB_DEVICE(0x10C4, 0x8857) }, /* CEL EM357 ZigBee USB Stick */
++
+ 	{ } /* Terminating Entry */
+ };
+ 

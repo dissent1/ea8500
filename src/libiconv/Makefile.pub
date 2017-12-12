@@ -1,0 +1,16 @@
+
+ifndef EXPORT_ONLY
+
+ifeq ($(toolchain_name),mips_r2_gcc-4.6-linaro)
+	AR="mips-openwrt-linux-uclibc-ar" RANLIB="mips-openwrt-linux-uclibc-ranlib" STRIP="mips-openwrt-linux-uclibc-strip -s" CC="mips-openwrt-linux-uclibc-gcc" LD="mips-openwrt-linux-uclibc-ld" CPP="mips-openwrt-linux-uclibc-gcc -E" CXX="mips-openwrt-linux-uclibc-g++" CXXCPP="mips-openwrt-linux-uclibc-gcc -E" 
+	configure = ./configure --disable-shared --enable-static --target=mips-openwrt-linux-uclibc --host=mips-openwrt-linux-uclibc gl_cv_header_working_stdint_h=yes  
+else
+	configure = echo "$(toolchain_name)" && ./configure --target=$(TC) --host=$(TC) --disable-shared --enable-static gl_cv_header_working_stdint_h=yes --cache-file=../config.cache --srcdir=.
+endif
+# focus is using mips-mtk-gcc463
+ifeq ($(toolchain_name),mips-mtk-gcc463)
+	build = make LDFLAGS="-fPIC" CFLAGS="-fPIC"
+else
+	build = make all
+endif
+endif

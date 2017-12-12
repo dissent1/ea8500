@@ -1,0 +1,77 @@
+diff -uprN src/cli.c /home/ssop/ws-beeliner_goofy_8852/pinnacle_f70_beeliner/wraith/output/debug/swconfig/build/swconfig/cli.c
+--- src/cli.c	2014-09-07 12:07:49.000000000 -0700
++++ /home/ssop/ws-beeliner_goofy_8852/pinnacle_f70_beeliner/wraith/output/debug/swconfig/build/swconfig/cli.c	2014-09-08 10:07:46.768568280 -0700
+@@ -23,7 +23,9 @@
+ #include <getopt.h>
+ #include <sys/types.h>
+ #include <sys/socket.h>
++#ifdef WITH_UCI
+ #include <uci.h>
++#endif
+ 
+ #include <linux/types.h>
+ #include <linux/netlink.h>
+@@ -42,6 +44,12 @@ enum {
+ 	CMD_HELP,
+ 	CMD_SHOW,
+ };
++#ifndef WITH_UCI
++typedef enum {
++    false,
++    true
++}bool;
++#endif
+ 
+ static void
+ print_attrs(const struct switch_attr *attr)
+@@ -170,7 +178,7 @@ print_usage(void)
+ 	printf("swconfig dev <dev> [port <port>|vlan <vlan>] (help|set <key> <value>|get <key>|load <config>|show)\n");
+ 	exit(1);
+ }
+-
++#ifdef WITH_UCI
+ static void
+ swconfig_load_uci(struct switch_dev *dev, const char *name)
+ {
+@@ -197,6 +205,7 @@ out:
+ 	uci_free_context(ctx);
+ 	exit(ret);
+ }
++#endif
+ 
+ int main(int argc, char **argv)
+ {
+@@ -313,7 +322,11 @@ int main(int argc, char **argv)
+ 		putchar('\n');
+ 		break;
+ 	case CMD_LOAD:
++#ifdef WITH_UCI
+ 		swconfig_load_uci(dev, ckey);
++#else
++		fprintf(stderr,"load command not supported.\n");
++#endif		
+ 		break;
+ 	case CMD_HELP:
+ 		list_attributes(dev);
+diff -uprN src/Makefile /home/ssop/ws-beeliner_goofy_8852/pinnacle_f70_beeliner/wraith/output/debug/swconfig/build/swconfig/Makefile
+--- src/Makefile	2014-09-07 12:07:49.000000000 -0700
++++ /home/ssop/ws-beeliner_goofy_8852/pinnacle_f70_beeliner/wraith/output/debug/swconfig/build/swconfig/Makefile	2014-09-08 09:06:24.275352152 -0700
+@@ -2,11 +2,18 @@ ifndef CFLAGS
+ CFLAGS = -O2 -g -I ../src
+ endif
+ LIBS=-lnl -lnl-genl
++ifeq ($(WITH_UCI),y)
++CFLAGS += WITH_UCI	
++endif	
+ 
+ all: swconfig
+ 
+ %.o: %.c
+ 	$(CC) $(CFLAGS) -c -o $@ $^
+ 
++ifeq ($(WITH_UCI),y)
+ swconfig: cli.o swlib.o uci.o
++else	
++swconfig: cli.o swlib.o
++endif	
+ 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)

@@ -1,0 +1,102 @@
+diff -Nur rp-l2tp.orig/handlers/sync-pppd.c rp-l2tp.new/handlers/sync-pppd.c
+--- rp-l2tp.orig/handlers/sync-pppd.c	2013-09-09 11:08:15.704283087 +0800
++++ rp-l2tp.new/handlers/sync-pppd.c	2013-09-09 17:42:12.020469294 +0800
+@@ -223,6 +223,50 @@
+     free(sl);
+ }
+ 
++
++/*
++ * enright@cisco.com Oct 2011 
++ * ppp frames arriving are not always being split correctly after they 
++ * are read in. This patch splits a buffer into distinct messages
++ */
++
++/**********************************************************************
++* calculate_ppp_frame_bytes
++* Inspect ppp frame to determine the number of bytes that are in the ppp frame
++***********************************************************************/
++static int
++calculate_ppp_frame_bytes(unsigned char *p, int p_bytes)
++{
++   int pkt_len;
++   //int protocol;
++
++   if (0 >= p_bytes) {
++      return(p_bytes);
++   }
++
++   /* extract the protocol carried in the ppp frame */
++   //protocol = 0;
++   //protocol |= p[2] & 0xFF;
++   //protocol <<= 8;
++   //protocol |= p[3] & 0xFF;
++
++   /* we can only handle ipv4 right now so return original bytes if not ipv4 */
++   /* ONly handle IPV4 packets, it might cause PINNACLE-368.Like IPCP packet, would get lost.
++	  Tao.Liang@belkin.com*/
++   //if (0x0021 != protocol){
++   //   return(p_bytes);
++   //}
++   
++   pkt_len = 0;
++   pkt_len |= p[6] & 0xFF;
++   pkt_len <<= 8;
++   pkt_len |= p[7] & 0xFF;
++
++   /* The ppp frame is ipv4 + 4 bytes of ppp header */
++   return(pkt_len + 4);
++}
++
++
+ /**********************************************************************
+ * %FUNCTION: readable
+ * %ARGUMENTS:
+@@ -243,6 +287,10 @@
+     l2tp_session *ses = (l2tp_session *) data;
+     int iters = 5;
+ 
++    int            remaining_len;
++    int            pkt_len;
++    unsigned char *buf_p;
++
+     /* It seems to be better to read in a loop than to go
+        back to select loop.  However, don't loop forever, or
+        we could have a DoS potential */
+@@ -253,10 +301,34 @@
+ 	/* TODO: Check this.... */
+ 	if (n <= 2) return;
+ 
+-	if (!ses) continue;
++        buf_p = buf+EXTRA_HEADER_ROOM;
++        remaining_len = n;
++        pkt_len = calculate_ppp_frame_bytes(buf+EXTRA_HEADER_ROOM, remaining_len);
++        if (pkt_len > remaining_len) {
++           pkt_len = remaining_len;
++        }
++
++
++
++while (0 < remaining_len) {
++   n = pkt_len;
++
++	/* TODO: Check this.... */
++	if (n <= 2) return;
++
++	if (!ses) goto next_loop;
+ 
+ 	/* Chop off framing bytes */
+-	l2tp_dgram_send_ppp_frame(ses, buf+EXTRA_HEADER_ROOM+2, n-2);
++	l2tp_dgram_send_ppp_frame(ses, buf_p+2, n-2);
++
++next_loop:
++   remaining_len -= pkt_len;
++   buf_p += pkt_len;
++   pkt_len = calculate_ppp_frame_bytes(buf_p, remaining_len);
++   if (pkt_len > remaining_len) {
++      pkt_len = remaining_len;
++   }
++} /* end of while (0 < remaining_len) */
+     }
+ }
+ 

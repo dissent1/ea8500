@@ -1,0 +1,29 @@
+diff -Nuar dnsmasq-2.55.orig/src/config.h dnsmasq-2.55/src/config.h
+--- dnsmasq-2.55.orig/src/config.h	2010-06-08 05:01:19.000000000 +0800
++++ dnsmasq-2.55/src/config.h	2013-01-06 14:10:49.000000000 +0800
+@@ -1,3 +1,4 @@
++/* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2012 */
+ /* dnsmasq is Copyright (c) 2000-2010 Simon Kelley
+ 
+    This program is free software; you can redistribute it and/or modify
+@@ -21,7 +22,7 @@
+ #define CHILD_LIFETIME 150 /* secs 'till terminated (RFC1035 suggests > 120s) */
+ #define EDNS_PKTSZ 4096 /* default max EDNS.0 UDP packet from RFC5625 */
+ #define TIMEOUT 10 /* drop UDP queries after TIMEOUT seconds */
+-#define FORWARD_TEST 50 /* try all servers every 50 queries */
++#define FORWARD_TEST 100 /* try all servers every 100 queries */
+ #define FORWARD_TIME 20 /* or 10 seconds */
+ #define RANDOM_SOCKS 64 /* max simultaneous random ports */
+ #define LEASE_RETRY 60 /* on error, retry writing leasefile after LEASE_RETRY seconds */
+diff -Nuar dnsmasq-2.55.orig/src/forward.c dnsmasq-2.55/src/forward.c
+--- dnsmasq-2.55.orig/src/forward.c	2013-01-06 14:11:43.000000000 +0800
++++ dnsmasq-2.55/src/forward.c	2013-01-06 14:08:55.479329000 +0800
+@@ -367,6 +367,8 @@
+ 		  forward->sentto = start;
+ 		  if (!forward->forwardall) 
+ 		    break;
++		  daemon->forwardcount = 0;
++		  daemon->forwardtime = now;
+ 		  forward->forwardall++;
+ 		}
+ 	    } 

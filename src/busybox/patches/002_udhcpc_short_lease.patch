@@ -1,0 +1,45 @@
+diff -Naur busybox-1.19.4.old/networking/udhcp/dhcpc.c busybox-1.19.4/networking/udhcp/dhcpc.c
+--- busybox-1.19.4.old/networking/udhcp/dhcpc.c	2015-03-05 12:19:29.150043479 +0800
++++ busybox-1.19.4/networking/udhcp/dhcpc.c	2015-03-05 12:19:49.046043595 +0800
+@@ -30,7 +30,7 @@
+ #include <linux/if_packet.h>
+ 
+ /* struct client_config_t client_config is in bb_common_bufsiz1 */
+-
++static int short_lease = 0;
+ 
+ #if ENABLE_LONG_OPTS
+ static const char udhcpc_longopts[] ALIGN1 =
+@@ -1493,7 +1493,7 @@
+ 			case RENEW_REQUESTED: /* manual (SIGUSR1) renew */
+ 			case_RENEW_REQUESTED:
+ 			case RENEWING:
+-				if (timeout > 60) {
++				if (timeout > 60 || short_lease) {
+ 					/* send an unicast renew request */
+ 			/* Sometimes observed to fail (EADDRNOTAVAIL) to bind
+ 			 * a new UDP socket for sending inside send_renew.
+@@ -1504,7 +1504,12 @@
+ 			 * into INIT_SELECTING state.
+ 			 */
+ 					send_renew(xid, server_addr, requested_ip);
+-					timeout >>= 1;
++					if (!short_lease) {
++					   timeout >>= 1;
++                    } else {
++                       timeout = (timeout*1.75)- timeout;
++                       short_lease = 0;
++                    }
+ 					continue;
+ 				}
+ 				/* Timed out, enter rebinding state */
+@@ -1686,6 +1691,9 @@
+ #endif
+ 				/* enter bound state */
+ 				timeout = lease_seconds / 2;
++				if (70 >= timeout) {
++                   short_lease = timeout;
++                }
+ 				{
+ 					struct in_addr temp_addr;
+ 					temp_addr.s_addr = packet.yiaddr;

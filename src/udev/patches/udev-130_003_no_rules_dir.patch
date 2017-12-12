@@ -1,0 +1,11 @@
+diff -Nur udev.orig/Makefile.in udev.new/Makefile.in
+--- udev.orig/Makefile.in	2011-08-28 15:54:59.799693286 -0700
++++ udev.new/Makefile.in	2011-08-28 15:55:24.971443381 -0700
+@@ -212,7 +212,6 @@
+ 
+ SUBDIRS = \
+ 	udev \
+-	rules \
+ 	extras
+ 
+ udevconfdir = $(sysconfdir)/udev

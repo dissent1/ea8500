@@ -1,0 +1,11 @@
+diff -Nur ez-ipupdate.orig/ez-ipupdate.c ez-ipupdate.new/ez-ipupdate.c
+--- ez-ipupdate-3.0.11b7.orig/ez-ipupdate.c	2011-08-23 16:30:14.286558368 -0700
++++ ez-ipupdate-3.0.11b7.new/ez-ipupdate.c	2011-08-23 15:56:41.150558384 -0700
+@@ -4908,6 +4908,7 @@
+     else
+     {
+       fprintf(stderr, "no update needed at this time\n");
++      retval = UPDATERES_OK;
+     }
+   }
+ 

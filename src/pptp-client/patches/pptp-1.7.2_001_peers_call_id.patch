@@ -1,0 +1,19 @@
+diff -Nur pptp.orig/pptp_ctrl.c pptp.new/pptp_ctrl.c
+--- pptp.orig/pptp_ctrl.c	2009-11-06 12:36:38.000000000 -0800
++++ pptp.new/pptp_ctrl.c	2009-11-06 12:38:31.000000000 -0800
+@@ -895,6 +895,15 @@
+                     call->callback(conn, call, CALL_OPEN_DONE);
+                 log("Outgoing call established (call ID %u, peer's "
+                         "call ID %u).\n", call->call_id, call->peer_call_id);
++                /*
++                 * cshen@cisco.com
++                 *
++                 * The peer's call ID should be inserted as well as caller's ID; 
++                 *   otherwise the later search will fail.  One example is 
++                 *   vectory_contains() call in Call-Disconnect-Notify, which
++                 *   returned FALSE because peer's call ID had not been inserted. 
++                 */
++                vector_insert(conn->call, call->peer_call_id, call);
+             }
+             break;
+         }

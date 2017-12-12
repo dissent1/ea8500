@@ -1,0 +1,151 @@
+/* Modifications were made by Linksys on or before Mon Apr 13 12:08:11 PDT 2015 */
+diff -uprN -X /home/devteam/kernel/dontdiff linux/arch/arm/mach-msm/board-ipq806x.c /home/devteam/r038300110.1/ipq8064-ilq-1-3_qca_oem_standard.git/qsdk/qca/src/linux/arch/arm/mach-msm/board-ipq806x.c
+--- linux/arch/arm/mach-msm/board-ipq806x.c	2015-03-25 14:38:20.371630248 -0700
++++ /home/devteam/r038300110.1/ipq8064-ilq-1-3_qca_oem_standard.git/qsdk/qca/src/linux/arch/arm/mach-msm/board-ipq806x.c	2015-04-13 10:23:09.902923366 -0700
+@@ -2374,7 +2374,7 @@ static void nss_gmac_init(void)
+ 		pdata->phy_mdio_addr = 4;
+ 		pdata->poll_required = 1;
+ 		pdata->rgmii_delay = 0;
+-		pdata->phy_mii_type = GMAC_INTF_RGMII;
++		pdata->phy_mii_type = PHY_INTERFACE_MODE_RGMII;
+ 		pdata->emulation = 0;
+ 		pdata->forced_speed = SPEED_1000;
+ 		pdata->forced_duplex = DUPLEX_FULL;
+@@ -2384,7 +2384,7 @@ static void nss_gmac_init(void)
+ 		pdata->phy_mdio_addr = 0;
+ 		pdata->poll_required = 0;
+ 		pdata->rgmii_delay = 0;
+-		pdata->phy_mii_type = GMAC_INTF_SGMII;
++		pdata->phy_mii_type = PHY_INTERFACE_MODE_SGMII;
+ 		pdata->emulation = 0;
+ 		pdata->forced_speed = SPEED_1000;
+ 		pdata->forced_duplex = DUPLEX_FULL;
+@@ -2394,7 +2394,7 @@ static void nss_gmac_init(void)
+ 		pdata->phy_mdio_addr = 6;
+ 		pdata->poll_required = 1;
+ 		pdata->rgmii_delay = 0;
+-		pdata->phy_mii_type = GMAC_INTF_SGMII;
++		pdata->phy_mii_type = PHY_INTERFACE_MODE_SGMII;
+ 		pdata->emulation = 0;
+ 		pdata->socver = socinfo_get_version();
+ 
+@@ -2402,7 +2402,7 @@ static void nss_gmac_init(void)
+ 		pdata->phy_mdio_addr = 7;
+ 		pdata->poll_required = 1;
+ 		pdata->rgmii_delay = 0;
+-		pdata->phy_mii_type = GMAC_INTF_SGMII;
++		pdata->phy_mii_type = PHY_INTERFACE_MODE_SGMII;
+ 		pdata->emulation = 0;
+ 		pdata->socver = socinfo_get_version();
+ 
+@@ -2420,7 +2420,7 @@ static void nss_gmac_init(void)
+ 		pdata->phy_mdio_addr = 4;
+ 		pdata->poll_required = 1;
+ 		pdata->rgmii_delay = 0;
+-		pdata->phy_mii_type = GMAC_INTF_RGMII;
++		pdata->phy_mii_type = PHY_INTERFACE_MODE_RGMII;
+ 		pdata->emulation = 0;
+ 		pdata->forced_speed = SPEED_1000;
+ 		pdata->forced_duplex = DUPLEX_FULL;
+@@ -2430,7 +2430,7 @@ static void nss_gmac_init(void)
+ 		pdata->phy_mdio_addr = 0;
+ 		pdata->poll_required = 0;
+ 		pdata->rgmii_delay = 0;
+-		pdata->phy_mii_type = GMAC_INTF_SGMII;
++		pdata->phy_mii_type = PHY_INTERFACE_MODE_SGMII;
+ 		pdata->emulation = 0;
+ 		pdata->forced_speed = SPEED_1000;
+ 		pdata->forced_duplex = DUPLEX_FULL;
+@@ -2452,7 +2452,7 @@ static void nss_gmac_init(void)
+ 		pdata->phy_mdio_addr = 4;
+ 		pdata->poll_required = 1;
+ 		pdata->rgmii_delay = 0;
+-		pdata->phy_mii_type = GMAC_INTF_RGMII;
++		pdata->phy_mii_type = PHY_INTERFACE_MODE_RGMII;
+ 		pdata->emulation = 0;
+ 		pdata->forced_speed = SPEED_1000;
+ 		pdata->forced_duplex = DUPLEX_FULL;
+@@ -2462,7 +2462,7 @@ static void nss_gmac_init(void)
+ 		pdata->phy_mdio_addr = 0;
+ 		pdata->poll_required = 0;
+ 		pdata->rgmii_delay = 0;
+-		pdata->phy_mii_type = GMAC_INTF_SGMII;
++		pdata->phy_mii_type = PHY_INTERFACE_MODE_SGMII;
+ 		pdata->emulation = 0;
+ 		pdata->forced_speed = SPEED_1000;
+ 		pdata->forced_duplex = DUPLEX_FULL;
+diff -uprN -X /home/devteam/kernel/dontdiff linux/arch/arm/mach-msm/include/mach/msm_nss_gmac.h /home/devteam/r038300110.1/ipq8064-ilq-1-3_qca_oem_standard.git/qsdk/qca/src/linux/arch/arm/mach-msm/include/mach/msm_nss_gmac.h
+--- linux/arch/arm/mach-msm/include/mach/msm_nss_gmac.h	2015-03-25 14:38:20.387630249 -0700
++++ /home/devteam/r038300110.1/ipq8064-ilq-1-3_qca_oem_standard.git/qsdk/qca/src/linux/arch/arm/mach-msm/include/mach/msm_nss_gmac.h	2015-04-13 10:23:10.066923359 -0700
+@@ -285,11 +285,6 @@
+ #define SERDES_PLL_ICP_MASK			0x70000000
+ #define SERDES_PLL_ICP(x)			(x << 28)
+ 
+-/* Interface between GMAC and PHY */
+-#define GMAC_INTF_RGMII				0
+-#define GMAC_INTF_SGMII				1
+-#define GMAC_INTF_QSGMII			2
+-
+ /* For MII<->MII Interfaces that do not use an Ethernet PHY */
+ #define NSS_GMAC_NO_MDIO_PHY			PHY_MAX_ADDR
+ 
+diff -uprN -X /home/devteam/kernel/dontdiff linux/drivers/of/of_net.c /home/devteam/r038300110.1/ipq8064-ilq-1-3_qca_oem_standard.git/qsdk/qca/src/linux/drivers/of/of_net.c
+--- linux/drivers/of/of_net.c	2015-03-25 14:38:34.523630787 -0700
++++ /home/devteam/r038300110.1/ipq8064-ilq-1-3_qca_oem_standard.git/qsdk/qca/src/linux/drivers/of/of_net.c	2015-04-13 10:23:30.514922390 -0700
+@@ -29,6 +29,7 @@ static const char *phy_modes[] = {
+ 	[PHY_INTERFACE_MODE_RGMII_TXID] = "rgmii-txid",
+ 	[PHY_INTERFACE_MODE_RTBI]	= "rtbi",
+ 	[PHY_INTERFACE_MODE_SMII]	= "smii",
++	[PHY_INTERFACE_MODE_QSGMII]	= "qsgmii",
+ };
+ 
+ /**
+diff -uprN -X /home/devteam/kernel/dontdiff linux/include/linux/if_bridge.h /home/devteam/r038300110.1/ipq8064-ilq-1-3_qca_oem_standard.git/qsdk/qca/src/linux/include/linux/if_bridge.h
+--- linux/include/linux/if_bridge.h	2015-03-25 14:38:38.599630942 -0700
++++ /home/devteam/r038300110.1/ipq8064-ilq-1-3_qca_oem_standard.git/qsdk/qca/src/linux/include/linux/if_bridge.h	2015-04-13 10:23:36.810922091 -0700
+@@ -105,6 +105,7 @@ extern void brioctl_set(int (*ioctl_hook
+ extern struct net_device *br_port_dev_get(struct net_device *dev, unsigned char *addr);
+ extern void br_refresh_fdb_entry(struct net_device *dev, const char *addr);
+ extern void br_dev_update_stats(struct net_device *dev, struct rtnl_link_stats64 *nlstats);
++extern bool br_fdb_has_entry(struct net_device *dev, const char *addr);
+ 
+ typedef int br_should_route_hook_t(struct sk_buff *skb);
+ extern br_should_route_hook_t __rcu *br_should_route_hook;
+diff -uprN -X /home/devteam/kernel/dontdiff linux/include/linux/phy.h /home/devteam/r038300110.1/ipq8064-ilq-1-3_qca_oem_standard.git/qsdk/qca/src/linux/include/linux/phy.h
+--- linux/include/linux/phy.h	2015-03-25 14:38:38.959630956 -0700
++++ /home/devteam/r038300110.1/ipq8064-ilq-1-3_qca_oem_standard.git/qsdk/qca/src/linux/include/linux/phy.h	2015-04-13 10:23:36.934922086 -0700
+@@ -64,6 +64,7 @@ typedef enum {
+ 	PHY_INTERFACE_MODE_RGMII_TXID,
+ 	PHY_INTERFACE_MODE_RTBI,
+ 	PHY_INTERFACE_MODE_SMII,
++	PHY_INTERFACE_MODE_QSGMII,
+ } phy_interface_t;
+ 
+ 
+diff -uprN -X /home/devteam/kernel/dontdiff linux/net/bridge/br_fdb.c /home/devteam/r038300110.1/ipq8064-ilq-1-3_qca_oem_standard.git/qsdk/qca/src/linux/net/bridge/br_fdb.c
+--- linux/net/bridge/br_fdb.c	2015-03-25 14:38:39.975630995 -0700
++++ /home/devteam/r038300110.1/ipq8064-ilq-1-3_qca_oem_standard.git/qsdk/qca/src/linux/net/bridge/br_fdb.c	2015-04-13 10:23:38.574922008 -0700
+@@ -474,6 +474,23 @@ void br_refresh_fdb_entry(struct net_dev
+ 
+ EXPORT_SYMBOL_GPL(br_refresh_fdb_entry);
+ 
++/* Look up the MAC address in the device's bridge fdb table */
++bool br_fdb_has_entry(struct net_device *dev, const char *addr)
++{
++	struct net_bridge_port *p = br_port_get_rcu(dev);
++	struct net_bridge_fdb_entry *fdb;
++
++	if (!p || p->state == BR_STATE_DISABLED)
++		return false;
++
++	rcu_read_lock();
++	fdb = fdb_find_rcu(&p->br->hash[br_mac_hash(addr)], addr);
++	rcu_read_unlock();
++
++	return (fdb != NULL);
++}
++EXPORT_SYMBOL_GPL(br_fdb_has_entry);
++
+ static int fdb_to_nud(const struct net_bridge_fdb_entry *fdb)
+ {
+ 	if (fdb->is_local)

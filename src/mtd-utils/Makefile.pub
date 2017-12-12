@@ -1,0 +1,6 @@
+
+ifndef EXPORT_ONLY
+	depends = zlib lzo acl attr
+	configure = /bin/true
+	build = make CC="$(CC)" TOOLCHAIN_CFLAGS="-Wno-unused-but-set-variable" CFLAGS="-DWITHOUT_XATTR -DWITHOUT_LZO -I$(ZLIB) -I$(LZO) -I`pwd`/../../../acl/include -I`pwd`/../../../attr/include -I`pwd`/../../../e2fsprogs/extracted/e2fsprogs-1.42.12/lib" LDFLAGS"=-L$(ZLIB) -L$(LZO)/../src/.libs -L`pwd`/../../../e2fsprogs/extracted/e2fsprogs-1.42.12/lib"
+endif

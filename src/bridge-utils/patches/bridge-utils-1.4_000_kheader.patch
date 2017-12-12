@@ -1,0 +1,16 @@
+diff -Naur bridge-utils-1.4.orig/libbridge/libbridge.h bridge-utils-1.4/libbridge/libbridge.h
+--- bridge-utils-1.4.orig/libbridge/libbridge.h	2008-01-08 08:20:35.000000000 -0800
++++ bridge-utils-1.4/libbridge/libbridge.h	2014-10-25 11:52:15.960232350 -0700
+@@ -1,3 +1,4 @@
++/* Modifications were made by Linksys on or before Sat Oct 25 11:52:15 PDT 2014 */
+ /*
+  * Copyright (C) 2000 Lennert Buytenhek
+  *
+@@ -20,6 +21,7 @@
+ #define _LIBBRIDGE_H
+ 
+ #include <sys/socket.h>
++#include <netinet/in.h>
+ #include <linux/if.h>
+ #include <linux/if_bridge.h>
+ 

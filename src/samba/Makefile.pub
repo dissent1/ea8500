@@ -1,0 +1,45 @@
+
+ifndef EXPORT_ONLY
+	configure = cd source && ./configure --target=$(TC) --host=$(TC) \
+					SMB_BUILD_CC_NEGATIVE_ENUM_VALUES=yes \
+					samba_cv_HAVE_GETTIMEOFDAY_TZ=yes \
+					samba_cv_USE_SETREUID=yes \
+					samba_cv_HAVE_IFACE_IFCONF=yes \
+					samba_cv_HAVE_KERNEL_OPLOCKS_LINUX=yes \
+					ac_cv_sizeof_off_t=4 \
+					samba_cv_SIZEOF_OFF_T=4 \
+					samba_cv_HAVE_OFF64_T=yes \
+					samba_cv_have_longlong=yes \
+					--disable-iprint \
+					--with-configdir=/tmp/samba \
+					--with-privatedir=/tmp/samba \
+					--with-lockdir=/var/lock \
+					--with-piddir=/var/run \
+					--with-logfilebase=/var/log/samba \
+					--disable-cups \
+					--enable-largefile \
+					--disable-dnssd \
+					--disable-cups \
+					--disable-ldap \
+					--disable-ads \
+					--disable-krb5 \
+					--disable-dnsupdate \
+					--disable-automount \
+					--disable-nisplus-home \
+					--disable-cluster-support \
+					--disable-utmp \
+					--disable-static \
+					--enable-shared \
+					--disable-sendfile-support \
+					--disable-sys-quotas \
+					--disable-quotas \
+					--disable-syslog \
+					--disable-libmsrpc \
+					--disable-libsmbclient \
+					--disable-libsmbsharemodes \
+					--disable-winbind \
+					--disable-cifsmount \
+					fu_cv_sys_stat_statvfs64=yes \
+					--with-aio-support
+	build = make -C source LDFLAGS="-lnsl"
+endif

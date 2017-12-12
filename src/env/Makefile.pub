@@ -1,0 +1,19 @@
+
+ifndef EXPORT_ONLY
+	depends = linux
+	extract = mkdir -p extracted/unused
+	configure = /bin/true
+ifeq ($(toolchain_name),mips_r2_gcc-4.6-linaro)
+	build = cd ../.. && $(CC) -DUSE_HOSTCC -DIP_CENTRAL -DPRODUCT_IMPALA -I$(LINUX) *.c
+else
+ifeq ($(toolchain_name),mipsel-brcm-gcc423)
+	build = cd ../.. && $(CC) -DUSE_HOSTCC -DIP_CENTRAL -DPLATFORM_MTK -DPRODUCT_TAURUS -I$(LINUX) *.c
+else
+ifeq ($(toolchain_name),armv7-marvell-linux-gnueabi-softfp_64k)
+	build = cd ../.. && $(CC) -DUSE_HOSTCC -DIP_CENTRAL *.c
+else
+	build = cd ../.. && $(CC) -DUSE_HOSTCC -DIP_CENTRAL -I$(LINUX) *.c
+endif
+endif
+endif
+endif

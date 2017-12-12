@@ -1,0 +1,60 @@
+diff -rc quagga-0.99.16.orig/doc/ipv6.texi quagga-0.99.16/doc/ipv6.texi
+*** quagga-0.99.16.orig/doc/ipv6.texi	2011-11-30 14:01:59.000000000 -0800
+--- quagga-0.99.16/doc/ipv6.texi	2011-11-30 14:43:48.782856387 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ @c Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011
+  @node IPv6 Support
+  @chapter IPv6 Support
+  
+diff -rc quagga-0.99.16.orig/zebra/interface.c quagga-0.99.16/zebra/interface.c
+*** quagga-0.99.16.orig/zebra/interface.c	2011-11-30 14:01:59.000000000 -0800
+--- quagga-0.99.16/zebra/interface.c	2011-11-30 14:43:48.886355368 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  /*
+   * Interface function.
+   * Copyright (C) 1997, 1999 Kunihiro Ishiguro
+diff -rc quagga-0.99.16.orig/zebra/interface.h quagga-0.99.16/zebra/interface.h
+*** quagga-0.99.16.orig/zebra/interface.h	2011-11-30 14:01:59.000000000 -0800
+--- quagga-0.99.16/zebra/interface.h	2011-11-30 14:43:48.902356734 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  /* Interface function header.
+   * Copyright (C) 1999 Kunihiro Ishiguro
+   *
+diff -rc quagga-0.99.16.orig/zebra/main.c quagga-0.99.16/zebra/main.c
+*** quagga-0.99.16.orig/zebra/main.c	2011-11-30 14:01:59.000000000 -0800
+--- quagga-0.99.16/zebra/main.c	2011-11-30 14:43:48.954356518 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  /* zebra daemon main routine.
+   * Copyright (C) 1997, 98 Kunihiro Ishiguro
+   *
+diff -rc quagga-0.99.16.orig/zebra/rtadv.c quagga-0.99.16/zebra/rtadv.c
+*** quagga-0.99.16.orig/zebra/rtadv.c	2011-11-30 14:01:59.000000000 -0800
+--- quagga-0.99.16/zebra/rtadv.c	2011-11-30 14:43:48.922355898 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  /* Router advertisement
+   * Copyright (C) 2005 6WIND <jean-mickael.guerin@6wind.com>
+   * Copyright (C) 1999 Kunihiro Ishiguro
+diff -rc quagga-0.99.16.orig/zebra/rtadv.h quagga-0.99.16/zebra/rtadv.h
+*** quagga-0.99.16.orig/zebra/rtadv.h	2011-11-30 14:01:59.000000000 -0800
+--- quagga-0.99.16/zebra/rtadv.h	2011-11-30 14:43:48.938356758 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  /* Router advertisement
+   * Copyright (C) 2005 6WIND <jean-mickael.guerin@6wind.com>
+   * Copyright (C) 1999 Kunihiro Ishiguro

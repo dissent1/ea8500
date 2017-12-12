@@ -1,0 +1,66 @@
+ifndef EXPORT_ONLY
+
+ifeq ($(toolchain_name),arm-2007q1)
+	MOD=viper
+	MOD2=mrvl
+	MOD3=-DMV_CPU_LE -I$(pwd)/.. -I$(LINUX)/.. -I$(LINUX)/../arch/arm/plat-feroceon/ -I$(LINUX)/../arch/arm/plat-feroceon/common/ -I$(LINUX)/../arch/arm/plat-feroceon/mv_hal/ -I$(LINUX)/../arch/arm/plat-feroceon/linux_oss/ -I$(LINUX)/../arch/arm/mach-feroceon-kw/ -I$(LINUX)/../arch/arm/mach-feroceon-kw/kw_family/ -I$(LINUX)/../arch/arm/mach-feroceon-kw/config/ -I$(pwd)/platform
+	BSPDIR=
+endif
+# this breaks the bentley build
+ifeq ($(toolchain_name),mipsel-brcm-gcc423)
+	MOD=focus
+	MOD2=mtk
+	MOD3=-I$(LINUX)/.. -I$(BSP)/src/linux/linux-2.6/include -I$(BSP)/src/linux/linux-2.6/include/asm -I$(BSP)/src/include -I$(BSP)/src/router/shared -I$(pwd)/platform
+	BSPDIR=
+endif
+
+ifeq ($(toolchain_name),ia32-2010.09)
+	MOD=viperuivm
+	MOD2=vmware
+	MOD3=-I$(LINUX)/.. -I$(pwd)/platform
+	BSPDIR=
+endif
+
+ifeq ($(toolchain_name),arm-brcm-linux-uclibcgnueabi)
+	MOD=lemans
+	MOD2=brcm
+	MOD3=-I$(LINUX)/.. -I$(BSP)/components/opensource/linux/linux-2.6.36 -I$(BSP)/components/opensource/linux/linux-2.6.36/asm -I$(BSP)/src/include -I$(BSP)/src/router/shared -I$(pwd)/platform
+	BSPDIR=brcm_bsp
+endif
+
+ifeq ($(toolchain_name),armv7-marvell-linux-gnueabi-hard_i686)
+	MOD=blk-mamba
+	MOD2=mrvl
+	MOD3=-DMV_CPU_LE -DGPIO -DBUTTONS -DLEDS -I$(pwd)/.. -I$(LINUX)/.. -I$(LINUX)/../arch/arm/plat-armada/ -I$(LINUX)/../arch/arm/plat-armada/common/ -I$(LINUX)/../arch/arm/plat-armada/mv_hal/ -I$(LINUX)/../arch/arm/plat-armada/mv_drivers_lsp/mv_trace/ -I$(LINUX)/../arch/arm/mach-armadaxp/ -I$(LINUX)/../arch/arm/mach-armadaxp/armada_xp_family/ -I$(LINUX)/../arch/arm/mach-armadaxp/config/ -I$(pwd)/platform
+	BSPDIR=
+endif
+
+ifeq ($(toolchain_name),armv7-marvell-linux-gnueabi-softfp_i686)
+	MOD=blk-mamba
+	MOD2=mrvl_armada
+	MOD3=-DMV_CPU_LE -DGPIO -DBUTTONS -DLEDS -I$(pwd)/.. -I$(LINUX)/.. -I$(LINUX)/../arch/arm/plat-armada/ -I$(LINUX)/../arch/arm/plat-armada/common/ -I$(LINUX)/../arch/arm/plat-armada/mv_hal/ -I$(LINUX)/../arch/arm/plat-armada/mv_drivers_lsp/mv_trace/ -I$(LINUX)/../arch/arm/mach-armadaxp/ -I$(LINUX)/../arch/arm/mach-armadaxp/armada_xp_family/ -I$(LINUX)/../arch/arm/mach-armadaxp/config/ -I$(pwd)/platform
+	BSPDIR=
+endif
+
+ifeq ($(toolchain_name),armv7-qca-gcc463-linaro)
+	MOD=wraith
+	MOD2=qca
+endif
+ifeq ($(toolchain_name),mips-mtk-gcc463)
+	MOD=taurus
+	MOD2=brcm
+	MOD3=-I$(LINUX)/.. -I$(BSP)/components/opensource/linux/linux-2.6.36 -I$(BSP)/components/opensource/linux/linux-2.6.36/asm -I$(BSP)/src/include -I$(BSP)/src/router/shared -I$(pwd)/platform
+	BSPDIR=
+endif
+ifeq ($(toolchain_name),mips_r2_gcc-4.6-linaro)
+	MOD=impala
+	MOD2=qca
+endif
+
+
+	depends = linux $(BSPDIR)
+	extract = mkdir -p extracted/unused
+$(warning toolchain_dir=$(toolchain_dir))
+	configure = cp -f ../../bdutil.h.$(MOD) ../../bdutil.h && /bin/echo -e "obj-m := $(dir).o\n$(dir)-objs := $(addsuffix .o,$(basename bdutil.c) $(basename $(wildcard platform/platform/$(MOD2)/*.c)))\nEXTRA_CFLAGS += $(MOD3)" > ../../Kbuild
+	build = cd ../.. && KBUILD_VERBOSE=1 ARCH=$(ARCH) make -C $(LINUX)/.. M=$(pwd) INSTALL_MOD_PATH=$(pwd) CROSS_COMPILE=$(CROSS_COMPILE)
+endif

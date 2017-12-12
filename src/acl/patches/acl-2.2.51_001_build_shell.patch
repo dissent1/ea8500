@@ -1,0 +1,24 @@
+Depending on the build system, /bin/sh may be a symbolic link to different
+flavors of shell. This package, for whatever reason, requires bash, so we
+force it to directly use bash. This way, it'll work on any build system,
+as long as /bin/bash is available.
+--- acl-2.2.51/include/buildmacros	2010-01-22 15:00:28.000000000 -0800
++++ acl-2.2.51.new/include/buildmacros	2013-05-22 18:06:43.892149197 -0700
+@@ -22,6 +22,8 @@
+ # $(CXXFILES), or $(HFILES) and is used to construct the manifest list
+ # during the "dist" phase (packaging).
+ 
++# Modifications were made by Belkin International, Inc. on or before Wed May 22 19:06:17 PDT 2013
++
+ LDFLAGS += $(LOADERFLAGS) $(LLDFLAGS)
+ LTLDFLAGS += $(LOADERFLAGS)
+ LDLIBS = $(LLDLIBS) $(PLDLIBS) $(MALLOCLIB)
+@@ -42,7 +44,7 @@
+ 
+ INSTALL	= $(TOPDIR)/include/install-sh -o $(PKG_USER) -g $(PKG_GROUP)
+ 
+-SHELL = /bin/sh
++SHELL = /bin/bash
+ IMAGES_DIR = $(TOPDIR)/all-images
+ DIST_DIR = $(TOPDIR)/dist
+ 

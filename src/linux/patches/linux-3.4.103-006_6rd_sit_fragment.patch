@@ -1,0 +1,30 @@
+--- old/net/ipv6/sit.c	2011-10-26 10:17:43.000000000 -0700
++++ new/net/ipv6/sit.c	2011-10-26 15:42:33.000000000 -0700
+@@ -17,6 +17,8 @@
+  * Fred Templin <fred.l.templin@boeing.com>:	isatap support
+  */
+ 
++/* modified by Cisco Systems, Inc. on 11/30/2012 */
++
+ #include <linux/module.h>
+ #include <linux/capability.h>
+ #include <linux/errno.h>
+@@ -793,7 +795,17 @@
+ 	iph 			=	ip_hdr(skb);
+ 	iph->version		=	4;
+ 	iph->ihl		=	sizeof(struct iphdr)>>2;
+-	iph->frag_off		=	df;
++	/*
++	 *  cshen@cisco.com:
++	 *
++	 *  Reference: RFC 3056
++	 *  Section 4. Maximum Transmission Unit
++	 *
++	 *  The IPv4 "do not fragment" bit SHOULD NOT be set in the encapsulating
++	 *  IPv4 header.
++	 */
++	// iph->frag_off		=	df;
++	iph->frag_off		=	0;
+ 	iph->protocol		=	IPPROTO_IPV6;
+ 	iph->tos		=	INET_ECN_encapsulate(tos, ipv6_get_dsfield(iph6));
+ 	iph->daddr		=	rt->rt_dst;

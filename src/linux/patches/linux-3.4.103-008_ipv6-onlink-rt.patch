@@ -1,0 +1,35 @@
+diff -Naur linux-orig/net/ipv6/addrconf.c linux-new/net/ipv6/addrconf.c
+--- linux-orig/net/ipv6/addrconf.c	2013-03-06 11:24:30.000000000 +0800
++++ linux-new/net/ipv6/addrconf.c	2013-09-27 14:22:01.000000000 +0800
+@@ -38,6 +38,8 @@
+  *						status etc.
+  */
+ 
++/* modified by Cisco Systems, Inc. on 11/30/2012 */
++
+ #include <linux/errno.h>
+ #include <linux/types.h>
+ #include <linux/kernel.h>
+@@ -1885,6 +1887,13 @@
+ 					       dev,
+ 					       RTF_ADDRCONF | RTF_PREFIX_RT,
+ 					       RTF_GATEWAY | RTF_DEFAULT);
++		/*
++		 * cshen@cisco.com
++		 *
++		 * If on-link route is in the routing cache, the following code
++		 *   fails to update timer, making route to expire and decimate.
++		 */
++#if 0
+ 
+ 		if (rt) {
+ 			/* Autoconf prefix route */
+@@ -1900,6 +1909,8 @@
+ 				rt->rt6i_expires = 0;
+ 			}
+ 		} else if (valid_lft) {
++#endif
++		if (valid_lft) {
+ 			clock_t expires = 0;
+ 			int flags = RTF_ADDRCONF | RTF_PREFIX_RT;
+ 			if (addrconf_finite_timeout(rt_expires)) {

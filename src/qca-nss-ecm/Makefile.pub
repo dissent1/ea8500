@@ -1,0 +1,8 @@
+
+WLAN = $(wildcard $(pwd)/../qca-nss-ecm/extracted/*/.)
+
+ifndef EXPORT_ONLY
+	depends = linux
+	configure = true
+	build = true
+endif

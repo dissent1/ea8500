@@ -1,0 +1,7 @@
+
+LZO = $(wildcard $(pwd)/../lzo/extracted/*/include)
+
+ifndef EXPORT_ONLY
+	configure = ./configure --target=$(TC) --host=$(TC) ac_cv_sizeof_off_t=4
+	build = make
+endif

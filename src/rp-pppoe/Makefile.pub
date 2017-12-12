@@ -1,0 +1,6 @@
+
+ifndef EXPORT_ONLY
+	patch = for n in ../../patches/*.patch; do patch -p$(patchlevel) < $$n; done > ../../.patchlog && cp ../../patches/Makefile.src src/Makefile && cp ../../patches/Makefile.libevent src/libevent/Makefile && cp ../../patches/config.h src
+	configure = /bin/true
+	build = make -C src CC=$(CC)
+endif

@@ -1,0 +1,17 @@
+TOOLCHAINS_WITHOUT_STACK_PROTECTOR := \
+			armv7-qca-gcc463-linaro \
+			arm-cortex-a7-qca-gcc483-linaro \
+			mips_r2_gcc-4.6-linaro \
+			mips-mtk-gcc463 \
+			mipsel-ea7300-mtk-gcc463
+ifndef EXPORT_ONLY
+	depends = openssl
+	configure = LDFLAGS=-L$(OPENSSL)/.. ./configure --host=$(TC) --oldincludedir=/unused/include --with-threads=pthread --with-ssl=$(OPENSSL)/..
+	build = make
+
+ifneq ($(filter $(toolchain_name), $(TOOLCHAINS_WITHOUT_STACK_PROTECTOR)),)
+	configure += && touch configure.ac aclocal.m4 configure Makefile.am Makefile.in
+	patch = cp -rf $(SPIDERPORK_ROOT)/lego_overlay/opensource/stunnel/patches/ ../../ ; patch -p$(patchlevel) < ../../patches/002_disable_linking_stack-protector_flag.patch || exit 1; > ../../.patchlog
+endif
+
+endif

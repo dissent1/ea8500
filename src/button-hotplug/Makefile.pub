@@ -1,0 +1,7 @@
+
+ifndef EXPORT_ONLY
+	depends = linux
+	configure = /bin/true
+	extract = mkdir -p extracted/unused
+	build = make -C $(LINUX)/.. KBUILD_VERBOSE=1 ARCH=$(ARCH) M=$(pwd)/src INSTALL_MOD_PATH=$(pwd) CROSS_COMPILE=$(CROSS_COMPILE)
+endif

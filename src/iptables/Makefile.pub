@@ -1,0 +1,10 @@
+
+ifndef EXPORT_ONLY
+	depends = linux
+ifeq ($(toolchain_name),armv7-marvell-linux-gnueabi-softfp_64k)
+	configure = ./configure --target=$(TC) --host=$(TC) --with-ksource=$(LINUX) --with-linux-headers==-I$(LINUX)
+else
+	configure = ./configure --target=$(TC) --host=$(TC) --with-ksource=$(LINUX) CFLAGS=-I$(LINUX)
+endif
+	build = make
+endif

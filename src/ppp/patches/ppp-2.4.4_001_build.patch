@@ -1,0 +1,317 @@
+diff -urp ppp-2.4.4-orig/chat/Makefile.linux ppp-2.4.4/chat/Makefile.linux
+--- ppp-2.4.4-orig/chat/Makefile.linux	2006-06-03 22:07:46.000000000 -0700
++++ ppp-2.4.4/chat/Makefile.linux	2010-05-24 20:02:37.821488445 -0700
+@@ -1,8 +1,8 @@
+ #	$Id: Makefile.linux,v 1.15 2006/06/04 05:07:46 paulus Exp $
+ 
+-DESTDIR = $(INSTROOT)@DESTDIR@
+-BINDIR = $(DESTDIR)/sbin
+-MANDIR = $(DESTDIR)/share/man/man8
++inner_DESTDIR = $(INSTROOT)@inner_DESTDIR@
++BINDIR = $(inner_DESTDIR)/sbin
++MANDIR = $(inner_DESTDIR)/share/man/man8
+ 
+ CDEF1=	-DTERMIOS			# Use the termios structure
+ CDEF2=	-DSIGTYPE=void			# Standard definition
+@@ -25,7 +25,7 @@ chat.o:	chat.c
+ 
+ install: chat
+ 	mkdir -p $(BINDIR) $(MANDIR)
+-	$(INSTALL) -s -c chat $(BINDIR)
++	$(INSTALL) -c chat $(BINDIR)
+ 	$(INSTALL) -c -m 644 chat.8 $(MANDIR)
+ 
+ clean:
+diff -urp ppp-2.4.4-orig/configure ppp-2.4.4/configure
+--- ppp-2.4.4-orig/configure	2005-07-08 17:23:05.000000000 -0700
++++ ppp-2.4.4/configure	2010-05-24 20:02:37.821488445 -0700
+@@ -2,7 +2,7 @@
+ # $Id: configure,v 1.37 2005/06/26 23:53:17 carlsonj Exp $
+ 
+ # Where to install stuff by default
+-DESTDIR=/usr/local
++inner_DESTDIR=/
+ SYSCONF=/etc
+ 
+ #  if [ -d /NextApps ]; then
+@@ -176,7 +176,7 @@ while [ $# -gt 0 ]; do
+ 	    ;;
+     esac
+     case $arg in
+-	--prefix)	DESTDIR=$val ;;
++	--prefix)	inner_DESTDIR=$val ;;
+ 	--sysconfdir)	SYSCONF=$val ;;
+     esac
+ done
+@@ -185,7 +185,7 @@ mkmkf() {
+     rm -f $2
+     if [ -f $1 ]; then
+ 	echo "  $2 <= $1"
+-	sed -e "s,@DESTDIR@,$DESTDIR,g" -e "s,@SYSCONF@,$SYSCONF,g" $1 >$2
++	sed -e "s,@inner_DESTDIR@,$inner_DESTDIR,g" -e "s,@SYSCONF@,$SYSCONF,g" $1 >$2
+     fi
+ }
+ 
+diff -urp ppp-2.4.4-orig/linux/Makefile.top ppp-2.4.4/linux/Makefile.top
+--- ppp-2.4.4-orig/linux/Makefile.top	2006-06-03 22:04:14.000000000 -0700
++++ ppp-2.4.4/linux/Makefile.top	2010-05-24 20:02:37.821488445 -0700
+@@ -1,9 +1,12 @@
+ # PPP top-level Makefile for Linux.
++INSTROOT=$(DESTDIR)
+ 
+-DESTDIR = $(INSTROOT)@DESTDIR@
+-BINDIR = $(DESTDIR)/sbin
+-INCDIR = $(DESTDIR)/include
+-MANDIR = $(DESTDIR)/share/man
++export INSTROOT 
++
++inner_DESTDIR = $(INSTROOT)@inner_DESTDIR@
++BINDIR = $(inner_DESTDIR)/sbin
++INCDIR = $(inner_DESTDIR)/include
++MANDIR = $(inner_DESTDIR)/share/man
+ ETCDIR = $(INSTROOT)@SYSCONF@/ppp
+ 
+ # uid 0 = root
+@@ -16,7 +19,10 @@ all:
+ 	cd pppstats; $(MAKE) $(MFLAGS) all
+ 	cd pppdump; $(MAKE) $(MFLAGS) all
+ 
++install_package: install
++
+ install: $(BINDIR) $(MANDIR)/man8 install-progs install-devel
++	echo inner_DESTDIR=$(inner_DESTDIR)
+ 
+ install-progs:
+ 	cd chat; $(MAKE) $(MFLAGS) install
+diff -urp ppp-2.4.4-orig/pppd/Makefile.linux ppp-2.4.4/pppd/Makefile.linux
+--- ppp-2.4.4-orig/pppd/Makefile.linux	2006-06-03 22:07:46.000000000 -0700
++++ ppp-2.4.4/pppd/Makefile.linux	2010-05-24 20:03:36.649488227 -0700
+@@ -4,10 +4,10 @@
+ #
+ 
+ # Default installation locations
+-DESTDIR = $(INSTROOT)@DESTDIR@
+-BINDIR = $(DESTDIR)/sbin
+-MANDIR = $(DESTDIR)/share/man/man8
+-INCDIR = $(DESTDIR)/include
++inner_DESTDIR = $(INSTROOT)@inner_DESTDIR@
++BINDIR = $(inner_DESTDIR)/sbin
++MANDIR = $(inner_DESTDIR)/share/man/man8
++INCDIR = $(inner_DESTDIR)/include
+ 
+ TARGETS = pppd
+ 
+@@ -75,11 +75,11 @@ PLUGIN=y
+ 
+ MAXOCTETS=y
+ 
+-INCLUDE_DIRS= -I../include
++INCLUDE_DIRS= -I../include -I../../include
+ 
+ COMPILE_FLAGS= -DHAVE_PATHS_H -DIPX_CHANGE -DHAVE_MMAP
+ 
+-CFLAGS= $(COPTS) $(COMPILE_FLAGS) $(INCLUDE_DIRS) '-DDESTDIR="@DESTDIR@"'
++CFLAGS= $(COPTS) $(COMPILE_FLAGS) $(INCLUDE_DIRS) '-Dinner_DESTDIR="@inner_DESTDIR@"'
+ 
+ ifdef CHAPMS
+ CFLAGS   += -DCHAPMS=1
+@@ -96,10 +96,10 @@ endif
+ 
+ # EAP SRP-SHA1
+ ifdef USE_SRP
+-CFLAGS	+= -DUSE_SRP -DOPENSSL -I/usr/local/ssl/include
+-LIBS	+= -lsrp -L/usr/local/ssl/lib -lcrypto
++CFLAGS	+= -DUSE_SRP -DOPENSSL -I$(PACKAGE_DEPEND)/include
++LIBS	+= -lsrp -L$(PACKAGE_DEPEND)/lib -lcrypto
+ TARGETS	+= srp-entry
+-EXTRAINSTALL = $(INSTALL) -s -c -m 555 srp-entry $(BINDIR)/srp-entry
++EXTRAINSTALL = $(INSTALL) -c -m 555 srp-entry $(BINDIR)/srp-entry
+ MANPAGES += srp-entry.8
+ EXTRACLEAN += srp-entry.o
+ NEEDDES=y
+@@ -117,7 +117,7 @@ CFLAGS   += -DHAS_SHADOW
+ #LIBS     += -lshadow $(LIBS)
+ endif
+ 
+-ifneq ($(wildcard /usr/include/crypt.h),)
++ifneq ($(shell find $(TOOLCHAIN_ROOT) -name crypt.h 2>/dev/null | wc -c),1)
+ CFLAGS  += -DHAVE_CRYPT_H=1
+ LIBS	+= -lcrypt
+ endif
+@@ -169,7 +169,8 @@ LIBS	+= -ldl
+ endif
+ 
+ ifdef FILTER
+-ifneq ($(wildcard /usr/include/pcap-bpf.h),)
++ifneq ($(wildcard $(PACKAGE_DEPEND)/include/pcap-bpf.h),)
++CFLAGS  += -I$(PACKAGE_DEPEND)/include
+ LIBS    += -lpcap
+ CFLAGS  += -DPPP_FILTER
+ endif
+@@ -200,7 +200,7 @@ all: $(TARGETS)
+ install: pppd
+ 	mkdir -p $(BINDIR) $(MANDIR)
+ 	$(EXTRAINSTALL)
+-	$(INSTALL) -s -c -m 555 pppd $(BINDIR)/pppd
++	$(INSTALL) -c -m 555 pppd $(BINDIR)/pppd
+ 	if chgrp pppusers $(BINDIR)/pppd 2>/dev/null; then \
+ 	  chmod o-rx,u+s $(BINDIR)/pppd; fi
+ 	$(INSTALL) -c -m 444 pppd.8 $(MANDIR)
+diff -urp ppp-2.4.4-orig/pppd/pathnames.h ppp-2.4.4/pppd/pathnames.h
+--- ppp-2.4.4-orig/pppd/pathnames.h	2005-08-25 16:59:34.000000000 -0700
++++ ppp-2.4.4/pppd/pathnames.h	2010-05-24 20:02:37.821488445 -0700
+@@ -57,7 +57,8 @@
+ 
+ #ifdef PLUGIN
+ #ifdef __STDC__
+-#define _PATH_PLUGIN	DESTDIR "/lib/pppd/" VERSION
++/*#define _PATH_PLUGIN	DESTDIR "/lib/pppd/" VERSION*/
++#define _PATH_PLUGIN	inner_DESTDIR "/lib/pppd/" VERSION
+ #else /* __STDC__ */
+ #define _PATH_PLUGIN	"/usr/lib/pppd"
+ #endif /* __STDC__ */
+diff -urp ppp-2.4.4-orig/pppd/plugins/Makefile.linux ppp-2.4.4/pppd/plugins/Makefile.linux
+--- ppp-2.4.4-orig/pppd/plugins/Makefile.linux	2006-06-03 22:04:14.000000000 -0700
++++ ppp-2.4.4/pppd/plugins/Makefile.linux	2010-05-24 20:02:37.821488445 -0700
+@@ -1,13 +1,13 @@
+-CC	= gcc
++#CC	= gcc
+ COPTS	= -O2 -g
+ CFLAGS	= $(COPTS) -I.. -I../../include -fPIC
+ LDFLAGS	= -shared
+ INSTALL	= install
+ 
+-DESTDIR = $(INSTROOT)@DESTDIR@
+-BINDIR = $(DESTDIR)/sbin
+-MANDIR = $(DESTDIR)/share/man/man8
+-LIBDIR = $(DESTDIR)/lib/pppd/$(VERSION)
++inner_DESTDIR = $(INSTROOT)@inner_DESTDIR@
++BINDIR = $(inner_DESTDIR)/sbin
++MANDIR = $(inner_DESTDIR)/share/man/man8
++LIBDIR = $(inner_DESTDIR)/lib/pppd/$(VERSION)
+ 
+ SUBDIRS := rp-pppoe pppoatm
+ # Uncomment the next line to include the radius authentication plugin
+diff -urp ppp-2.4.4-orig/pppd/plugins/pppoatm/Makefile.linux ppp-2.4.4/pppd/plugins/pppoatm/Makefile.linux
+--- ppp-2.4.4-orig/pppd/plugins/pppoatm/Makefile.linux	2004-11-13 17:12:10.000000000 -0800
++++ ppp-2.4.4/pppd/plugins/pppoatm/Makefile.linux	2010-05-24 20:02:37.821488445 -0700
+@@ -1,4 +1,4 @@
+-CC	= gcc
++#CC	= gcc
+ COPTS	= -O2 -g
+ CFLAGS	= $(COPTS) -I../.. -I../../../include -fPIC
+ LDFLAGS	= -shared
+@@ -6,8 +6,9 @@ INSTALL	= install
+ 
+ #***********************************************************************
+ 
+-DESTDIR = @DESTDIR@
+-LIBDIR = $(DESTDIR)/lib/pppd/$(VERSION)
++#inner_DESTDIR = @inner_DESTDIR@
++#LIBDIR = $(inner_DESTDIR)/lib/pppd/$(VERSION)
++LIBDIR = $(INSTROOT)/lib/pppd/$(VERSION)
+ 
+ VERSION = $(shell awk -F '"' '/VERSION/ { print $$2; }' ../../patchlevel.h)
+ 
+diff -urp ppp-2.4.4-orig/pppd/plugins/radius/Makefile.linux ppp-2.4.4/pppd/plugins/radius/Makefile.linux
+--- ppp-2.4.4-orig/pppd/plugins/radius/Makefile.linux	2006-06-03 22:04:14.000000000 -0700
++++ ppp-2.4.4/pppd/plugins/radius/Makefile.linux	2010-05-24 20:02:37.821488445 -0700
+@@ -3,9 +3,9 @@
+ # Copyright 2002 Roaring Penguin Software Inc.
+ #
+ 
+-DESTDIR = $(INSTROOT)@DESTDIR@
+-MANDIR = $(DESTDIR)/share/man/man8
+-LIBDIR = $(DESTDIR)/lib/pppd/$(VERSION)
++inner_DESTDIR = $(INSTROOT)@inner_DESTDIR@
++MANDIR = $(inner_DESTDIR)/share/man/man8
++LIBDIR = $(inner_DESTDIR)/lib/pppd/$(VERSION)
+ 
+ VERSION = $(shell awk -F '"' '/VERSION/ { print $$2; }' ../../patchlevel.h)
+ 
+@@ -36,9 +36,9 @@ all: $(PLUGIN)
+ 
+ install: all
+ 	$(INSTALL) -d -m 755 $(LIBDIR)
+-	$(INSTALL) -s -c -m 755 radius.so $(LIBDIR)
+-	$(INSTALL) -s -c -m 755 radattr.so $(LIBDIR)
+-	$(INSTALL) -s -c -m 755 radrealms.so $(LIBDIR)
++	$(INSTALL) -c -m 755 radius.so $(LIBDIR)
++	$(INSTALL) -c -m 755 radattr.so $(LIBDIR)
++	$(INSTALL) -c -m 755 radrealms.so $(LIBDIR)
+ 	$(INSTALL) -c -m 444 pppd-radius.8 $(MANDIR)
+ 	$(INSTALL) -c -m 444 pppd-radattr.8 $(MANDIR)
+ 
+diff -urp ppp-2.4.4-orig/pppd/plugins/rp-pppoe/Makefile.linux ppp-2.4.4/pppd/plugins/rp-pppoe/Makefile.linux
+--- ppp-2.4.4-orig/pppd/plugins/rp-pppoe/Makefile.linux	2006-06-03 22:07:46.000000000 -0700
++++ ppp-2.4.4/pppd/plugins/rp-pppoe/Makefile.linux	2010-05-24 20:02:37.821488445 -0700
+@@ -13,9 +13,9 @@
+ # $Id: Makefile.linux,v 1.7 2006/06/04 05:07:46 paulus Exp $
+ #***********************************************************************
+ 
+-DESTDIR = $(INSTROOT)@DESTDIR@
+-BINDIR = $(DESTDIR)/sbin
+-LIBDIR = $(DESTDIR)/lib/pppd/$(PPPDVERSION)
++inner_DESTDIR = $(INSTROOT)@inner_DESTDIR@
++BINDIR = $(inner_DESTDIR)/sbin
++LIBDIR = $(inner_DESTDIR)/lib/pppd/$(PPPDVERSION)
+ 
+ PPPDVERSION = $(shell awk -F '"' '/VERSION/ { print $$2; }' ../../patchlevel.h)
+ 
+@@ -39,9 +39,9 @@ rp-pppoe.so: libplugin.a plugin.o
+ 
+ install: all
+ 	$(INSTALL) -d -m 755 $(LIBDIR)
+-	$(INSTALL) -s -c -m 4550 rp-pppoe.so $(LIBDIR)
++	$(INSTALL) -c -m 4550 rp-pppoe.so $(LIBDIR)
+ 	$(INSTALL) -d -m 755 $(BINDIR)
+-	$(INSTALL) -s -c -m 555 pppoe-discovery $(BINDIR)
++	$(INSTALL) -c -m 555 pppoe-discovery $(BINDIR)
+ 
+ clean:
+ 	rm -f *.o *.so
+diff -urp ppp-2.4.4-orig/pppdump/Makefile.linux ppp-2.4.4/pppdump/Makefile.linux
+--- ppp-2.4.4-orig/pppdump/Makefile.linux	2006-06-03 22:04:14.000000000 -0700
++++ ppp-2.4.4/pppdump/Makefile.linux	2010-05-24 20:02:37.825488553 -0700
+@@ -1,6 +1,6 @@
+-DESTDIR = $(INSTROOT)@DESTDIR@
+-BINDIR = $(DESTDIR)/sbin
+-MANDIR = $(DESTDIR)/share/man/man8
++inner_DESTDIR = $(INSTROOT)@inner_DESTDIR@
++BINDIR = $(inner_DESTDIR)/sbin
++MANDIR = $(inner_DESTDIR)/share/man/man8
+ 
+ CFLAGS= -O -I../include/net
+ OBJS = pppdump.o bsd-comp.o deflate.o zlib.o
+@@ -17,5 +17,5 @@ clean:
+ 
+ install:
+ 	mkdir -p $(BINDIR) $(MANDIR)
+-	$(INSTALL) -s -c pppdump $(BINDIR)
++	$(INSTALL) -c pppdump $(BINDIR)
+ 	$(INSTALL) -c -m 444 pppdump.8 $(MANDIR)
+diff -urp ppp-2.4.4-orig/pppstats/Makefile.linux ppp-2.4.4/pppstats/Makefile.linux
+--- ppp-2.4.4-orig/pppstats/Makefile.linux	2006-06-03 22:07:46.000000000 -0700
++++ ppp-2.4.4/pppstats/Makefile.linux	2010-05-24 20:02:37.825488553 -0700
+@@ -2,9 +2,9 @@
+ # pppstats makefile
+ # $Id: Makefile.linux,v 1.9 2006/06/04 05:07:46 paulus Exp $
+ #
+-DESTDIR = $(INSTROOT)@DESTDIR@
+-BINDIR = $(DESTDIR)/sbin
+-MANDIR = $(DESTDIR)/share/man/man8
++inner_DESTDIR = $(INSTROOT)@inner_DESTDIR@
++BINDIR = $(inner_DESTDIR)/sbin
++MANDIR = $(inner_DESTDIR)/share/man/man8
+ 
+ PPPSTATSRCS = pppstats.c
+ PPPSTATOBJS = pppstats.o
+@@ -22,7 +22,7 @@ all: pppstats
+ 
+ install: pppstats
+ 	-mkdir -p $(MANDIR)
+-	$(INSTALL) -s -c pppstats $(BINDIR)
++	$(INSTALL) -c pppstats $(BINDIR)
+ 	$(INSTALL) -c -m 444 pppstats.8 $(MANDIR)
+ 
+ pppstats: $(PPPSTATSRCS)

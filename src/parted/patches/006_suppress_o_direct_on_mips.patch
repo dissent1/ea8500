@@ -1,0 +1,17 @@
+diff -urp a/libparted/arch/linux.c b/libparted/arch/linux.c
+--- a/libparted/arch/linux.c	2014-11-06 16:12:06.705411751 -0800
++++ b/libparted/arch/linux.c	2014-11-06 16:12:31.638816026 -0800
+@@ -1,3 +1,4 @@
++/* Modifications were made by Linksys on or before Thu Nov  6 15:40:02 PST 2014 */
+ /*
+     libparted - a library for manipulating disk partitions
+     Copyright (C) 1999 - 2005, 2007 Free Software Foundation, Inc.
+@@ -65,7 +66,7 @@
+ #define HDIO_GETGEO             0x0301  /* get device geometry */
+ #define HDIO_GET_IDENTITY       0x030d  /* get IDE identification info */
+ 
+-#if defined(O_DIRECT) && (!defined(__s390__) || !defined(__s390x__))
++#if defined(O_DIRECT) && (!defined(__s390__) || !defined(__s390x__)) && !defined (__mips__)
+ #define RD_MODE (O_RDONLY | O_DIRECT)
+ #define WR_MODE (O_WRONLY | O_DIRECT)
+ #define RW_MODE (O_RDWR | O_DIRECT)

@@ -1,0 +1,21 @@
+diff -Naur igmpproxy-0.1.orig/src/rttable.c igmpproxy-0.1/src/rttable.c
+--- igmpproxy-0.1.orig/src/rttable.c      2013-04-08 14:47:06.538879265 -0700
++++ igmpproxy-0.1/src/rttable.c   2013-04-08 14:52:24.544455446 -0700
+@@ -1,3 +1,4 @@
++/* Modifications were made by Belkin International, Inc. on or before Mon Apr 8 14:52:00 PST 2013 */
+ /*
+ **  igmpproxy - IGMP proxy based multicast router
+ **  Copyright (C) 2005 Johnny Egeland <johnny@rlo.org>
+@@ -366,12 +367,6 @@   
+     if(croute != NULL) {
+         // If the origin address is set, update the route data.
+         if(originAddr > 0) {
+-            if(croute->originAddr > 0 && croute->originAddr!=originAddr) {
+-                my_log(LOG_WARNING, 0, "The origin for route %s changed from %s to %s",
+-                    inetFmt(croute->group, s1),
+-                    inetFmt(croute->originAddr, s2),
+-                    inetFmt(originAddr, s3));
+-            }
+             croute->originAddr = originAddr;
+         }
+

@@ -1,0 +1,7 @@
+
+ifndef EXPORT_ONLY
+	depends = libnetfilter_queue libnfnetlink
+	extract = mkdir -p extracted/unused
+	configure = /bin/true
+	build = cd ../.. && $(CC) *.c -I$(LIBNETFILTER_QUEUE) -L$(LIBNETFILTER_QUEUE)/../src/.libs -I$(NFNETLINK) -L$(NFNETLINK)/../src/.libs -lnetfilter_queue -lnfnetlink -lrt
+endif

@@ -1,0 +1,363 @@
+diff -rc parted-1.8.7.orig/include/parted/natmath.h parted-1.8.7/include/parted/natmath.h
+*** parted-1.8.7.orig/include/parted/natmath.h	2007-04-18 14:12:10.000000000 -0700
+--- parted-1.8.7/include/parted/natmath.h	2012-07-19 09:13:46.305907740 -0700
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Jul 18 15:30:40 PDT 2012 */
+  /*
+      libparted - a library for manipulating disk partitions
+      Copyright (C) 2000 Free Software Foundation, Inc.
+***************
+*** 87,96 ****
+  extern const PedAlignment* ped_alignment_any;
+  extern const PedAlignment* ped_alignment_none;
+  
+! extern inline PedSector
+  ped_div_round_up (PedSector numerator, PedSector divisor);
+  
+! extern inline PedSector
+  ped_div_round_to_nearest (PedSector numerator, PedSector divisor);
+  
+  #endif /* PED_NATMATH_H_INCLUDED */
+--- 88,97 ----
+  extern const PedAlignment* ped_alignment_any;
+  extern const PedAlignment* ped_alignment_none;
+  
+! extern /* inline */ PedSector
+  ped_div_round_up (PedSector numerator, PedSector divisor);
+  
+! extern /* inline */ PedSector
+  ped_div_round_to_nearest (PedSector numerator, PedSector divisor);
+  
+  #endif /* PED_NATMATH_H_INCLUDED */
+diff -rc parted-1.8.7.orig/lib/rpl_malloc.h parted-1.8.7/lib/rpl_malloc.h
+*** parted-1.8.7.orig/lib/rpl_malloc.h	2012-07-19 09:06:06.301967238 -0700
+--- parted-1.8.7/lib/rpl_malloc.h	2012-07-19 09:13:46.305907740 -0700
+***************
+*** 0 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Jul 18 15:30:40 PDT 2012 */
++ 
++ void *rpl_malloc(size_t size);
++ void *rpl_realloc(void *ptr, size_t size);
+diff -rc parted-1.8.7.orig/lib/wchar_.h parted-1.8.7/lib/wchar_.h
+*** parted-1.8.7.orig/lib/wchar_.h	2007-04-27 04:09:11.000000000 -0700
+--- parted-1.8.7/lib/wchar_.h	2012-07-19 09:20:38.173964992 -0700
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Jul 18 15:30:40 PDT 2012 */
+  /* A substitute for ISO C99 <wchar.h>, for platforms that have issues.
+  
+     Copyright (C) 2007 Free Software Foundation, Inc.
+***************
+*** 43,49 ****
+--- 44,55 ----
+  
+  /* Include the original <wchar.h>.  */
+  #if !(defined __DECC && __DECC_VER >= 60000000)
++ #ifdef __UCLIBC__
++ #include <stddef.h>
++ #include <stdlib.h>
++ #else
+  # include @ABSOLUTE_WCHAR_H@
+  #endif
++ #endif
+  
+  #endif /* _GL_WCHAR_H */
+diff -rc parted-1.8.7.orig/libparted/cs/natmath.c parted-1.8.7/libparted/cs/natmath.c
+*** parted-1.8.7.orig/libparted/cs/natmath.c	2007-04-18 14:12:10.000000000 -0700
+--- parted-1.8.7/libparted/cs/natmath.c	2012-07-19 09:13:46.309907879 -0700
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Jul 18 15:30:40 PDT 2012 */
+  /*
+      libparted - a library for manipulating disk partitions
+      Copyright (C) 2000, 2007 Free Software Foundation, Inc.
+***************
+*** 75,87 ****
+  	return sector - abs_mod (sector, grain_size);
+  }
+  
+! inline PedSector
+  ped_div_round_up (PedSector numerator, PedSector divisor)
+  {
+                  return (numerator + divisor - 1) / divisor;
+  }
+  
+! inline PedSector
+  ped_div_round_to_nearest (PedSector numerator, PedSector divisor)
+  {
+                  return (numerator + divisor/2) / divisor;
+--- 76,88 ----
+  	return sector - abs_mod (sector, grain_size);
+  }
+  
+! /* inline */ PedSector
+  ped_div_round_up (PedSector numerator, PedSector divisor)
+  {
+                  return (numerator + divisor - 1) / divisor;
+  }
+  
+! /* inline */ PedSector
+  ped_div_round_to_nearest (PedSector numerator, PedSector divisor)
+  {
+                  return (numerator + divisor/2) / divisor;
+diff -rc parted-1.8.7.orig/libparted/fs/fat/fat.c parted-1.8.7/libparted/fs/fat/fat.c
+*** parted-1.8.7.orig/libparted/fs/fat/fat.c	2007-04-18 14:12:10.000000000 -0700
+--- parted-1.8.7/libparted/fs/fat/fat.c	2012-07-19 09:13:46.309907879 -0700
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Jul 18 15:30:40 PDT 2012 */
+  /*
+      libparted
+      Copyright (C) 1998, 1999, 2000, 2001, 2007 Free Software Foundation, Inc.
+***************
+*** 269,277 ****
+  _gen_new_serial_number ()
+  {
+  	uuid_t		uuid;
+  
+  	uuid_generate (uuid);
+! 	return * (uint32_t*) &uuid [0];
+  }
+  
+  PedFileSystem*
+--- 270,281 ----
+  _gen_new_serial_number ()
+  {
+  	uuid_t		uuid;
++ 	uint32_t	randish;
+  
+  	uuid_generate (uuid);
+! 	/* return * (uint32_t*) &uuid [0]; */
+! 	memcpy(&randish, &uuid[0], sizeof randish);
+! 	return randish;
+  }
+  
+  PedFileSystem*
+diff -rc parted-1.8.7.orig/libparted/fs/fat/traverse.c parted-1.8.7/libparted/fs/fat/traverse.c
+*** parted-1.8.7.orig/libparted/fs/fat/traverse.c	2007-04-18 14:12:10.000000000 -0700
+--- parted-1.8.7/libparted/fs/fat/traverse.c	2012-07-19 09:13:46.309907879 -0700
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Jul 18 15:30:40 PDT 2012 */
+  /*
+      libparted
+      Copyright (C) 1998, 1999, 2000, 2005, 2007 Free Software Foundation, Inc.
+***************
+*** 351,370 ****
+  void
+  fat_dir_entry_get_name (FatDirEntry*dir_entry, char *result) {
+  	int     i;
+! 	char   *src;
+  
+  	src = dir_entry->name;
+  
+  	for (i=0; i<8; i++) {
+  		if (src[i] == ' ' || src[i] == 0) break;
+  		*result++ = src[i];
+  	}
+  
+! 	if (src[8] != ' ' && src[8] != 0) {
+  		*result++ = '.';
+! 		for (i=8; i<11; i++) {
+! 			if (src[i] == ' ' || src[i] == 0) break;
+! 			*result++ = src[i];
+  		}
+  	}
+  
+--- 352,372 ----
+  void
+  fat_dir_entry_get_name (FatDirEntry*dir_entry, char *result) {
+  	int     i;
+! 	char   *src, *ext;
+  
+  	src = dir_entry->name;
++ 	ext = (char*) dir_entry->name;
+  
+  	for (i=0; i<8; i++) {
+  		if (src[i] == ' ' || src[i] == 0) break;
+  		*result++ = src[i];
+  	}
+  
+! 	if (ext[0] != ' ' && ext[0] != 0) {
+  		*result++ = '.';
+! 		for (i=0; i<3; i++) {
+! 			if (ext[i] == ' ' || ext[i] == 0) break;
+! 			*result++ = ext[i];
+  		}
+  	}
+  
+diff -rc parted-1.8.7.orig/parted/strlist.c parted-1.8.7/parted/strlist.c
+*** parted-1.8.7.orig/parted/strlist.c	2007-04-18 14:12:10.000000000 -0700
+--- parted-1.8.7/parted/strlist.c	2012-07-19 09:13:46.309907879 -0700
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Jul 18 15:30:40 PDT 2012 */
+  /*
+      parted - a frontend to libparted
+      Copyright (C) 1999, 2000, 2001 Free Software Foundation, Inc.
+***************
+*** 25,30 ****
+--- 26,32 ----
+  #include <errno.h>
+  #include <stdarg.h>
+  #include <stdio.h>
++ #include <stddef.h>
+  #include <stdlib.h>
+  #include <string.h>
+  #include <limits.h>
+diff -rc parted-1.8.7.orig/parted/table.c parted-1.8.7/parted/table.c
+*** parted-1.8.7.orig/parted/table.c	2007-05-09 12:19:10.000000000 -0700
+--- parted-1.8.7/parted/table.c	2012-07-19 09:13:46.309907879 -0700
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Jul 18 15:30:40 PDT 2012 */
+  /*
+   * TODO: - make right and centered alignment possible
+   */
+***************
+*** 23,34 ****
+--- 24,38 ----
+  
+  
+  #include <stdio.h>
++ #include <stddef.h>
+  #include <stdlib.h>
+  
+  #include <assert.h>
+  
+  #include <config.h>
+  
++ #include "rpl_malloc.h"
++ 
+  #ifdef ENABLE_NLS
+  #       include <wchar.h>
+          int wcswidth (const wchar_t *s, size_t n);
+diff -rc parted-1.8.7.orig/parted/ui.c parted-1.8.7/parted/ui.c
+*** parted-1.8.7.orig/parted/ui.c	2007-05-09 13:40:23.000000000 -0700
+--- parted-1.8.7/parted/ui.c	2012-07-19 09:13:46.313908567 -0700
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Jul 18 15:30:40 PDT 2012 */
+  /*
+      parted - a frontend to libparted
+      Copyright (C) 1999, 2000, 2001, 2002, 2006, 2007
+***************
+*** 32,37 ****
+--- 33,39 ----
+  #include "command.h"
+  #include "strlist.h"
+  #include "ui.h"
++ #include "rpl_malloc.h"
+  
+  #define N_(String) String
+  #if ENABLE_NLS
+***************
+*** 297,302 ****
+--- 299,305 ----
+  
+  #endif /* HAVE_LIBREADLINE */
+  
++ #ifndef SA_SIGINFO
+  static void
+  mask_signal()
+  {
+***************
+*** 306,311 ****
+--- 309,315 ----
+          sigfillset(&curr);
+          sigprocmask(SIG_SETMASK, &curr, &prev);
+  }
++ #endif /* !SA_SIGINFO */
+  
+  /* Resets the environment by jumping to the initial state
+   * saved during ui intitialisation.
+***************
+*** 339,344 ****
+--- 343,349 ----
+          reset_env (0);
+  }
+  
++ #ifndef SA_SIGINFO
+  /* Signal handler for SIGINT using 'signal'. */
+  static void
+  s_sigint_handler (int signum)
+***************
+*** 347,352 ****
+--- 352,358 ----
+          mask_signal ();
+          sa_sigint_handler (signum, NULL, NULL);
+  }
++ #endif /* !SA_SIGINFO */
+  
+  /* Signal handler for SIGSEGV using 'sigaction'. */
+  static void
+***************
+*** 383,388 ****
+--- 389,395 ----
+          abort ();
+  }
+  
++ #ifndef SA_SIGINFO
+  /* Signal handler for SIGSEGV using 'signal'. */
+  static void
+  s_sigsegv_handler (int signum)
+***************
+*** 391,396 ****
+--- 398,404 ----
+          mask_signal ();
+          sa_sigsegv_handler (signum, NULL, NULL);
+  }
++ #endif /* !SA_SIGINFO */
+  
+  /* Signal handler for SIGFPE using 'sigaction'. */
+  static void
+***************
+*** 456,461 ****
+--- 464,470 ----
+          abort ();
+  }
+  
++ #ifndef SA_SIGINFO
+  /* Signal handler for SIGFPE using 'signal'. */
+  static void
+  s_sigfpe_handler (int signum)
+***************
+*** 464,469 ****
+--- 473,479 ----
+          mask_signal ();
+          sa_sigfpe_handler (signum, NULL, NULL);
+  }
++ #endif /* !SA_SIGINFO */
+  
+  /* Signal handler for SIGILL using 'sigaction'. */
+  static void
+***************
+*** 528,533 ****
+--- 538,544 ----
+          abort ();
+  }
+  
++ #ifndef SA_SIGINFO
+  /* Signal handler for SIGILL using 'signal'. */
+  static void
+  s_sigill_handler (int signum)
+***************
+*** 536,541 ****
+--- 547,553 ----
+          mask_signal ();
+          sa_sigill_handler (signum, NULL, NULL);
+  }
++ #endif /* !SA_SIGINFO */
+  
+  static char*
+  _readline (const char* prompt, const StrList* possibilities)

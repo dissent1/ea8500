@@ -1,0 +1,8 @@
+
+LIBNETFILTER_QUEUE = $(wildcard $(pwd)/../libnetfilter_queue/extracted/*/include)
+
+ifndef EXPORT_ONLY
+	depends = libnfnetlink
+	configure = LIBNFNETLINK_CFLAGS=-I$(NFNETLINK) LIBNFNETLINK_LIBS=-L$(NFNETLINK)/../src/.libs ./configure --target=$(TC) --host=$(TC)
+	build = make
+endif

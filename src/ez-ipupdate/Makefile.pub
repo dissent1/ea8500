@@ -1,0 +1,5 @@
+
+ifndef EXPORT_ONLY
+	configure = ./configure --target=$(TC) --host=$(TC) --with-linux-headers=$(LINUX)
+	build = make
+endif

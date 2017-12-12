@@ -1,0 +1,40 @@
+diff -Nur ppp-2.4.4.orig/pppd/lcp.c ppp-2.4.4.new/pppd/lcp.c
+--- ppp-2.4.4.orig/pppd/lcp.c	2014-02-13 16:35:18.202682823 +0800
++++ ppp-2.4.4.new/pppd/lcp.c	2014-02-13 16:34:29.982682665 +0800
+@@ -1561,16 +1561,33 @@
+              * cshen@cisco.com 08/05/2011
+              *   We don't want to ignor larger than our configured mru as well.
+              */
+-	    if (cishort < MINMRU || cishort > wo->mru) {
++	    /* 
++         * Correction:we should compare MRU peer requesting to our configured mtu(ao->mru),not our configured mru(wo->mru) 
++         */
++        if (cishort < MINMRU || cishort > ao->mru) {
+ 		orc = CONFNAK;		/* Nak CI */
+ 		PUTCHAR(CI_MRU, nakp);
+ 		PUTCHAR(CILEN_SHORT, nakp);
+-		PUTSHORT(MINMRU, nakp);	/* Give him a hint */
++        if ( cishort < MINMRU )
++        {
++            PUTSHORT(MINMRU, nakp); /* Give him a hint */
++        }
++        else if ( cishort > ao->mru )
++        {
++            PUTSHORT(ao->mru, nakp); /* Give him a hint */
++        }
+ 		break;
+ 	    }
+ 	    ho->neg_mru = 1;		/* Remember he sent MRU */
+ 	    ho->mru = cishort;		/* And remember value */
+-	    break;
++	    /* we set tcp mss according to the new value */
++        unsigned int tcp_mss = cishort - 40;
++        if (tcp_mss > 0)
++        {
++            snprintf(cmd, sizeof(cmd), "sysevent set ppp_clamp_mtu %d",tcp_mss);
++            system(cmd);
++        }
++        break;
+ 
+ 	case CI_ASYNCMAP:
+ 	    if (!ao->neg_asyncmap ||

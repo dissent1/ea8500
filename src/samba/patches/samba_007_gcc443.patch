@@ -1,0 +1,24 @@
+diff -rc samba-3.0.28a.orig/source/client/mount.cifs.c samba-3.0.28a/source/client/mount.cifs.c
+*** samba-3.0.28a.orig/source/client/mount.cifs.c	2012-02-23 19:28:21.000000000 -0800
+--- samba-3.0.28a/source/client/mount.cifs.c	2012-02-23 19:45:38.897572017 -0800
+***************
+*** 1,4 ****
+! /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  /* 
+     Mount helper utility for Linux CIFS VFS (virtual filesystem) client
+     Copyright (C) 2003,2005 Steve French  (sfrench@us.ibm.com)
+--- 1,4 ----
+! /* Modifications were made by Cisco Systems, Inc. on or before Thu Feb 23 19:45:28 PST 2012 */
+  /* 
+     Mount helper utility for Linux CIFS VFS (virtual filesystem) client
+     Copyright (C) 2003,2005 Steve French  (sfrench@us.ibm.com)
+***************
+*** 38,43 ****
+--- 38,44 ----
+  #include <netdb.h>
+  #include <string.h>
+  #include <mntent.h>
++ #include <limits.h>
+  #include <fcntl.h>
+  
+  #define MOUNT_CIFS_VERSION_MAJOR "1"

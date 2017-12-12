@@ -1,0 +1,55 @@
+diff -Nur pppd-old/pppd/lcp.c pppd-new/pppd/lcp.c
+--- pppd-old/pppd/lcp.c	2012-05-10 14:18:01.387570000 +0800
++++ pppd-new/pppd/lcp.c	2012-05-10 16:42:44.535579000 +0800
+@@ -1510,7 +1510,8 @@
+     u_char *rejp;		/* Pointer to next char in reject frame */
+     u_char *nakp;		/* Pointer to next char in Nak frame */
+     int l = *lenp;		/* Length left */
+-
++	char cmd[64];
++	memset(cmd, 0, sizeof(cmd));
+     /*
+      * Reset all his options.
+      */
+@@ -1638,6 +1639,10 @@
+ 		    break;
+ 		}
+ 		ho->neg_upap = 1;
++		/*taliang@cisco.com 10/05/2012 */
++	    /*sysevent ppp_auth_proto:pap/chap_md5/chap_ms/chap_ms_v2/eap*/
++		snprintf(cmd, sizeof(cmd), "sysevent set ppp_auth_proto pap");
++		system(cmd);
+ 		break;
+ 	    }
+ 	    if (cishort == PPP_CHAP) {
+@@ -1674,6 +1679,21 @@
+ 		}
+ 		ho->chap_mdtype = CHAP_MDTYPE_D(cichar); /* save md type */
+ 		ho->neg_chap = 1;
++		switch(ho->chap_mdtype)
++		{
++			case MDTYPE_MD5:
++				snprintf(cmd, sizeof(cmd), "sysevent set ppp_auth_proto chap_md5");
++				break;
++			case MDTYPE_MICROSOFT:
++			    snprintf(cmd, sizeof(cmd), "sysevent set ppp_auth_proto chap_ms");
++		        break;
++			case MDTYPE_MICROSOFT_V2:
++		        snprintf(cmd, sizeof(cmd), "sysevent set ppp_auth_proto chap_ms_v2");
++		        break;
++			default:
++				break;
++		}
++		system(cmd);
+ 		break;
+ 	    }
+ 	    if (cishort == PPP_EAP) {
+@@ -1697,6 +1717,8 @@
+ 		    break;
+ 		}
+ 		ho->neg_eap = 1;
++		snprintf(cmd, sizeof(cmd), "sysevent set ppp_auth_proto eap");
++		system(cmd);
+ 		break;
+ 	    }
+ 

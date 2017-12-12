@@ -1,0 +1,6 @@
+
+ifndef EXPORT_ONLY
+	depends = attr
+	configure = sed -i "s|-I../../../depend/include|-I../../../../attr/include|g" libacl/Makefile && AR="$(TC)-ar" RANLIB="$(TC)-ranlib" STRIP="$(TC)-strip -s" CC="$(TC)-gcc" LD="$(TC)-ld" CPP="$(TC)-gcc -E" CXX="$(TC)-g++" CXXCPP="$(TC)-gcc -E" LDFLAGS="-L`pwd`/../../../attr/lib" CPPFLAGS="-Os -Wall -I`pwd`/../../../attr/include" ./configure --target=$(TC) --host=$(TC) --includedir=`pwd`/../../../attr/include  
+	build = make CC=$(CC)
+endif

@@ -1,0 +1,37 @@
+--- a/include/usage.src.h	2012-02-04 11:24:55.000000000 -0800
++++ b/include/usage.src.h	2014-09-10 14:09:42.756546220 -0700
+@@ -16,6 +16,24 @@
+ 
+ INSERT
+ 
++#define ip6calc_trivial_usage \
++       "[OPTION]... ADDRESS[/PREFIX] [ADDRESS/PREFIX]"
++#define ip6calc_full_usage \
++       "Calculate IPv6 network settings from a IPv6 address\n" \
++     "\nOptions:" \
++     "\n	-4,--ipv4	Convert IPv4 to IPv6 address" \
++     "\n	-6,--6to4	Convert IPv4 to 6to4 address" \
++     "\n	-m,--netmask	Display netmask" \
++     "\n	-h,--host	Display host / Interface Identifier" \
++     "\n 	-p,--prefix     Display the prefix" \
++     "\n	-n,--hostname	Resolve the IPv6 address into a hostname" \
++     "\n	-a,--and	Perform a binary AND between 2 addresses" \
++     "\n	-o,--or		Perform a binary OR between 2 addresses" \
++     "\n	-x,--xor	Perform a binary XOR between 2 addresses" \
++     "\n	-l,--left-shift	Perform a left shift operation on the address" \
++     "\n	-r,--right-shift	Perform a right shift operation on the address" \
++
++
+ #define busybox_notes_usage \
+        "Hello world!\n"
+ 
+--- a/include/applets.src.h	2014-09-10 14:55:04.916588876 -0700
++++ b/include/applets.src.h	2014-09-10 13:50:43.780528372 -0700
+@@ -198,6 +198,7 @@ IF_IP(APPLET(ip, BB_DIR_BIN, BB_SUID_DRO
+ #endif
+ IF_IPADDR(APPLET(ipaddr, BB_DIR_BIN, BB_SUID_DROP))
+ IF_IPCALC(APPLET(ipcalc, BB_DIR_BIN, BB_SUID_DROP))
++IF_IPCALC(APPLET(ip6calc, BB_DIR_BIN, BB_SUID_DROP))
+ IF_IPCRM(APPLET(ipcrm, BB_DIR_USR_BIN, BB_SUID_DROP))
+ IF_IPCS(APPLET(ipcs, BB_DIR_USR_BIN, BB_SUID_DROP))
+ IF_IPLINK(APPLET(iplink, BB_DIR_BIN, BB_SUID_DROP))

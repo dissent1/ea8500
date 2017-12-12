@@ -1,0 +1,6 @@
+
+ifndef EXPORT_ONLY
+	depends = linux
+	configure = AR="$(TC)-ar" RANLIB="$(TC)-ranlib" STRIP="$(TC)-strip -s" CC="$(TC)-gcc" LD="$(TC)-ld" CPP="$(TC)-gcc -E" CXX="$(TC)-g++" CXXCPP="$(TC)-gcc -E" CPPFLAGS="-Os -Wall" CFLAGS="-Os -Wall"  ./configure --target=arm-marvell-linux-gnueabi --host=arm-marvell-linux-gnueabi --enable-shared --prefix=`pwd`/../../ 
+	build = make CC=$(CC) install-dev install-lib
+endif

@@ -1,0 +1,278 @@
+diff -urN iproute2-org/tc/Makefile iproute2-new0826/tc/Makefile
+--- iproute2-org/tc/Makefile	2010-08-19 17:01:17.000000000 +0800
++++ iproute2-new0826/tc/Makefile	2010-08-23 16:45:54.000000000 +0800
+@@ -10,7 +10,8 @@
+ TCMODULES += q_sfq.o
+ #TCMODULES += q_red.o
+ TCMODULES += q_prio.o
+ TCMODULES += q_tbf.o
++TCMODULES += q_wifi.o
+ #TCMODULES += q_cbq.o
+ #TCMODULES += q_rr.o
+ #TCMODULES += q_multiq.o
+diff -urN iproute2-org/tc/q_wifi.c iproute2-new0826/tc/q_wifi.c
+--- iproute2-org/tc/q_wifi.c	1970-01-01 08:00:00.000000000 +0800
++++ iproute2-new0826/tc/q_wifi.c	2010-08-26 21:55:57.991888000 +0800
+@@ -0,0 +1,262 @@
++/*
++ * q_wifi.c		wifi.
++ *
++ *		This program is free software; you can redistribute it and/or
++ *		modify it under the terms of the GNU General Public License
++ *		as published by the Free Software Foundation; either version
++ *		2 of the License, or (at your option) any later version.
++ *
++ * Authors:	sijun wu, <siwu@cisco.com>
++ *
++ */
++
++#include <stdio.h>
++#include <stdlib.h>
++#include <unistd.h>
++#include <syslog.h>
++#include <fcntl.h>
++#include <sys/socket.h>
++#include <netinet/in.h>
++#include <arpa/inet.h>
++#include <string.h>
++
++#include "utils.h"
++#include "tc_util.h"
++
++#define U_FST_PRT printf
++
++#ifndef IFNAMSIZ
++#define IFNAMSIZ 16
++#endif
++
++#ifndef BAND_24
++#define BAND_24                    0
++#endif
++
++#ifndef BAND_5
++#define BAND_5                    1
++#endif
++
++#define MON_MAX_QDISCS            6
++
++
++struct tc_wifi_qopt
++{
++    __u32   qLen;
++    __s32   band;	
++    __u8    virtIf[IFNAMSIZ];    
++    __u8    phyIf[IFNAMSIZ];    
++    __s32   percent[MON_MAX_QDISCS];	
++};
++
++
++enum
++{
++    TCA_WIFI_UNSPEC,
++    TCA_WIFI_PARMS,
++    TCA_WIFI_DUMP,
++    __TCA_WIFI_MAX,
++};
++#define TCA_WIFI_MAX (__TCA_WIFI_MAX - 1)
++
++
++static void explain(void)
++{
++    fprintf(stderr, "Usage: ... wifi qlen NUMBER band 24/5 phyIf name virtIf name percent Q1 Q2 ...\n");
++}
++
++static void explain1(char *arg)
++{
++    fprintf(stderr, "Illegal \"%s\"\n", arg);
++}
++
++
++#define usage() return(-1)
++
++static int wifi_parse_opt(struct qdisc_util *qu, int argc, char **argv, struct nlmsghdr *n)
++{
++    struct tc_wifi_qopt opt;
++    struct rtattr *tail;
++    int i;
++    int counter=0;
++
++    memset(&opt, 0, sizeof(opt));
++    printf("\r\nIn function(wifi_parse_opt)\r\n");
++
++    while (argc > 0)
++    {
++        if (strcmp(*argv, "qlen") == 0)
++        {
++            NEXT_ARG();
++            opt.qLen = strtoul(*argv,NULL,10);
++            counter++;            
++        }else if(strcmp(*argv, "band") == 0){
++            NEXT_ARG();
++            if(!strcmp(*argv,"5"))
++                opt.band = BAND_5;
++            else if (!strcmp(*argv,"24"))
++                opt.band = BAND_24;
++            else{
++                explain1("band");
++                return -1;
++            }           
++            counter++; 
++        }else if(strcmp(*argv, "phyIf") == 0){
++            NEXT_ARG();
++            strncpy(opt.phyIf,*argv,IFNAMSIZ);            
++            counter++; 
++        }else if(strcmp(*argv, "virtIf") == 0){
++            NEXT_ARG();
++            strncpy(opt.virtIf,*argv,IFNAMSIZ);
++            counter++; 
++        }else if(strcmp(*argv, "percent") == 0 && argc == (1+MON_MAX_QDISCS)){
++        
++            for(i=0;i<MON_MAX_QDISCS;++i){
++                NEXT_ARG();
++                opt.percent[i]= strtoul(*argv,NULL,10);
++                if(opt.percent[i] <=0 || opt.percent[i] > 100){
++                    explain1("percent");
++                    return -1;
++                }
++            }    
++            counter++;         
++            break;
++        }else{
++			fprintf(stderr, "What is \"%s\"?\n", *argv);
++			explain();
++			return -1;
++		}
++		argc--; argv++;
++	}    if(5!=counter){
++        explain();
++        return -1;
++    }
++
++    printf("\r\n Debug \r\n");
++    printf("\r\n qlen is %d",opt.qLen);
++    printf("\r\n band is %d",opt.band);    
++    printf("\r\n phyIf is %s",opt.phyIf);
++    printf("\r\n virtIf is %s",opt.virtIf);    
++
++    for(i=0;i<MON_MAX_QDISCS;++i){     
++        printf("\r\n percent[%d] %d",i,opt.percent[i]);
++    }
++        
++    tail = NLMSG_TAIL(n);
++    addattr_l(n, 1024, TCA_OPTIONS, NULL, 0);
++    addattr_l(n, 2024, TCA_WIFI_PARMS, &opt, sizeof(opt));
++    tail->rta_len = (void*)NLMSG_TAIL(n) - (void*)tail;
++	
++    printf("\r\nLeaving function(wif_parse_opt)rta_len:%d\r\n",tail->rta_len);
++	
++    return 0;
++}
++
++
++typedef struct tc_wifi_sub_stats_s
++{
++    unsigned int bytes;
++    unsigned int packets;
++    unsigned int qlen;
++    unsigned int backlog;
++    unsigned int drops;
++    unsigned int overlimits;
++}tc_wifi_sub_stats_t;
++
++
++typedef struct tc_wifi_dump_s
++{
++    char    virtIf[IFNAMSIZ];
++    char    phyIf[IFNAMSIZ];
++    unsigned int rootQlen;
++    unsigned int rootBytes;
++    unsigned int rootPackets;
++    unsigned int rootDrops;    
++    int share;
++    int band;	
++    int defBkQLen;
++    int	defBeQLen;
++    int	defViQLen;
++    int	defVoQLen;	
++    int threshold[MON_MAX_QDISCS];		
++    tc_wifi_sub_stats_t subQueues[MON_MAX_QDISCS];
++}tc_wifi_dump_t;
++
++
++
++static int wifi_print_opt(struct qdisc_util *qu, FILE *f, struct rtattr *opt)
++{
++    struct rtattr *tb[TCA_WIFI_DUMP+1];
++    //struct tc_wifi_qopt *qopt;
++    tc_wifi_dump_t* qopt;
++    int i;
++
++    printf("\r\n Forrest debug Enter(fst_print_opt)\r\n");
++	
++    if (opt == NULL)
++        return 0;
++
++    parse_rtattr_nested(tb, TCA_WIFI_DUMP, opt);
++
++    if (tb[TCA_WIFI_DUMP] == NULL)
++    {
++        fprintf(f, "no wifi dump.\r\n");
++        return -1;
++    }
++
++    if (RTA_PAYLOAD(tb[TCA_WIFI_DUMP])  < sizeof(tc_wifi_dump_t))
++    {
++        fprintf(f, "invalid length of wifi dump.\r\n");
++        return -1;
++    }
++
++    qopt = RTA_DATA(tb[TCA_WIFI_DUMP]);
++    fprintf(f, " DUMP info\n\n");	
++
++    fprintf(f, " phyIf:%s\t", qopt->phyIf);
++    fprintf(f, " virtIf:%s\t", qopt->virtIf);
++
++    fprintf(f, " rootQlen:%d\t", qopt->rootQlen);
++    fprintf(f, " rootBytes:%d\t", qopt->rootBytes); 
++    fprintf(f, " rootPackets:%d\t", qopt->rootPackets); 
++    fprintf(f, " rootDrops:%d\n", qopt->rootDrops);    
++    fprintf(f, " share:%d\t", qopt->share);      
++    fprintf(f, " band:%d\t", qopt->band);  
++
++    fprintf(f, " defBeQLen:%d\t", qopt->defBeQLen); 
++    fprintf(f, " defBkQLen:%d\t", qopt->defBkQLen);    
++    fprintf(f, " defViQLen:%d\t", qopt->defViQLen);
++    fprintf(f, " defVoQLen:%d\n", qopt->defVoQLen);  
++
++
++
++    for(i=0; i < MON_MAX_QDISCS;i++)
++    {
++        fprintf(f, " sub queue[%d] \n", i);
++        fprintf(f, " threshold:%d \t", qopt->threshold[i]);
++
++        fprintf(f, " qlen:%d \t", qopt->subQueues[i].qlen);     
++        fprintf(f, " packets:%d \t", qopt->subQueues[i].packets);        
++        fprintf(f, " bytes:%d \t", qopt->subQueues[i].bytes);         
++        fprintf(f, " drops:%d \t", qopt->subQueues[i].drops);       
++        fprintf(f, " backlog:%d \t", qopt->subQueues[i].backlog);        
++        fprintf(f, " overlimits:%d \n", qopt->subQueues[i].overlimits); 
++        fprintf(f, "\r\n");        
++    }
++
++    fprintf(f, "\r\n wifi print opt leave.(fst_print_opt)\r\n");
++	return 0;
++}
++
++static int wifi_print_xstats(struct qdisc_util *qu, FILE *f, struct rtattr *xstats)
++{
++    return 0;
++}
++
++struct qdisc_util wifi_qdisc_util = {
++    .id = "wifi",
++    .parse_qopt = wifi_parse_opt,
++    .print_qopt = wifi_print_opt,
++    .print_xstats = wifi_print_xstats,
++};
++

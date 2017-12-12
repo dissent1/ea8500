@@ -1,0 +1,35 @@
+diff -Nur dnsmasq.orig/src/forward.c dnsmasq.new/src/forward.c
+--- dnsmasq.orig/src/forward.c	2010-07-08 18:35:59.416285928 -0700
++++ dnsmasq.new/src/forward.c	2010-07-08 18:42:43.140535708 -0700
+@@ -511,7 +511,12 @@
+    
+   server = forward->sentto;
+   
+-  if ((header->rcode == SERVFAIL || header->rcode == REFUSED) &&
++  /*
++   * enright@cisco.com July 08,2010
++   * In order to support the same DNS rcodes as bind,
++   * we add NOTIMP to the list of rcodes that cause server failover
++   */
++  if ((header->rcode == SERVFAIL || header->rcode == REFUSED || header->rcode == NOTIMP) &&
+       !(daemon->options & OPT_ORDER) &&
+       forward->forwardall == 0)
+     /* for broken servers, attempt to send to another one. */
+@@ -539,7 +544,7 @@
+   
+   if ((forward->sentto->flags & SERV_TYPE) == 0)
+     {
+-      if (header->rcode == SERVFAIL || header->rcode == REFUSED)
++      if (header->rcode == SERVFAIL || header->rcode == REFUSED || header->rcode == NOTIMP)
+ 	server = NULL;
+       else
+ 	{
+@@ -563,7 +568,7 @@
+      had replies from all to avoid filling the forwarding table when
+      everything is broken */
+   if (forward->forwardall == 0 || --forward->forwardall == 1 || 
+-      (header->rcode != REFUSED && header->rcode != SERVFAIL))
++     (header->rcode != REFUSED && header->rcode != SERVFAIL && header->rcode != NOTIMP))
+     {
+       int check_rebind = !forward->norebind;
+ 

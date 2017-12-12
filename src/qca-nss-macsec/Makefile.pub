@@ -1,0 +1,9 @@
+
+NSS_DRV = $(wildcard $(pwd)/../qca-nss-drv/extracted/*/.)
+GMAC_DRV = $(wildcard $(pwd)/../qca-nss-macsec/extracted/*/.)
+
+ifndef EXPORT_ONLY
+	depends = linux
+	configure = /bin/true
+	build = /bin/true
+endif

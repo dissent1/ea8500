@@ -1,0 +1,40 @@
+diff -Naur pptp-1.7.2-old/Makefile pptp-1.7.2/Makefile
+--- pptp-1.7.2-old/Makefile	2008-05-13 23:33:55.000000000 -0700
++++ pptp-1.7.2/Makefile	2009-01-09 17:18:07.000000000 -0800
+@@ -8,7 +8,6 @@
+ #################################################################
+ 
+ BINDIR=$(DESTDIR)/usr/sbin
+-MANDIR=$(DESTDIR)/usr/share/man/man8
+ PPPDIR=$(DESTDIR)/etc/ppp
+ 
+ CC	= gcc
+@@ -29,8 +28,7 @@
+ PPTP_OBJS = pptp.o pptp_gre.o ppp_fcs.o \
+             pptp_ctrl.o dirutil.o vector.o \
+ 	    inststr.o util.o version.o test.o \
+-	    pptp_quirks.o orckit_quirks.o pqueue.o pptp_callmgr.o routing.o \
+-	    pptp_compat.o
++	    pptp_quirks.o orckit_quirks.o pqueue.o pptp_callmgr.o routing.o
+ 
+ PPTP_DEPS = pptp_callmgr.h pptp_gre.h ppp_fcs.h util.h test.h \
+ 	    pptp_quirks.h orckit_quirks.h config.h pqueue.h routing.h
+@@ -63,16 +61,8 @@
+ 
+ install:
+ 	mkdir -p $(BINDIR)
+-	install -o root -m 555 pptp $(BINDIR)
+-	install -o root -m 555 pptpsetup $(BINDIR)
+-	mkdir -p $(MANDIR)
+-	install -m 644 pptp.8 $(MANDIR)
+-	install -m 644 pptpsetup.8 $(MANDIR)
+-	mkdir -p $(PPPDIR)
+-	install -m 644 options.pptp $(PPPDIR)
+-
+-uninstall:
+-	$(RM) $(BINDIR)/pptp $(MANDIR)/pptp.8
++	install pptp $(BINDIR)
++	$(STRIP) $(BINDIR)/pptp -o $(BINDIR)/pptp
+ 
+ dist: clobber
+ 	$(RM) pptp-$(VERSION)$(RELEASE).tar.gz

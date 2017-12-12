@@ -1,0 +1,1063 @@
+From a0b69efeafe92210d2fa17b93b601104439f7b69 Mon Sep 17 00:00:00 2001
+From: Wallace Peng <wallace.peng@belkin.com>
+Date: Sun, 29 Sep 2013 17:11:53 +0800
+Subject: [PATCH] kernel mode pppol2tp support
+
+Signed-off-by: Wallace Peng <wallace.peng@belkin.com>
+---
+ dgram.c              |  17 +--
+ handlers/sync-pppd.c | 300 +++++++++++++++++++++++++++++++++++++++++++++++----
+ l2tp.h               |  14 ++-
+ main.c               |  24 ++++-
+ network.c            |  30 ++----
+ session.c            |   9 +-
+ tunnel.c             | 130 ++++++++++++++++++++--
+ 7 files changed, 455 insertions(+), 69 deletions(-)
+
+diff --git a/dgram.c b/dgram.c
+index 24fb606..26e24e9 100644
+--- a/dgram.c
++++ b/dgram.c
+@@ -1,3 +1,4 @@
++/* Modifications were made by Belkin International, Inc. on or before Fri Sep 13 14:13:39 PDT 2013 */
+ /***********************************************************************
+ *
+ * dgram.c
+@@ -14,7 +15,7 @@
+ ***********************************************************************/
+ 
+ static char const RCSID[] =
+-"$Id: dgram.c,v 1.3 2003/01/11 05:29:03 dossy Exp $";
++"$Id: dgram.c 3323 2011-09-21 18:45:48Z lly.dev $";
+ 
+ #include "l2tp.h"
+ #include "md5.h"
+@@ -294,6 +295,7 @@ l2tp_dgram_free(l2tp_dgram *dgram)
+ /**********************************************************************
+ * %FUNCTION: dgram_take_from_wire
+ * %ARGUMENTS:
++*  fd   -- socket to read from
+ *  from -- set to address of peer.
+ * %RETURNS:
+ *  NULL on error, allocated datagram otherwise.
+@@ -304,7 +306,7 @@ l2tp_dgram_free(l2tp_dgram *dgram)
+ *  returning to select loop each time if there's lots of traffic.
+ ***********************************************************************/
+ l2tp_dgram *
+-l2tp_dgram_take_from_wire(struct sockaddr_in *from)
++l2tp_dgram_take_from_wire(int fd, struct sockaddr_in *from)
+ {
+     /* EXTRA_HEADER_ROOM bytes for other headers like PPPoE, etc. */
+ 
+@@ -316,7 +318,7 @@ l2tp_dgram_take_from_wire(struct sockaddr_in *from)
+     unsigned char *payload;
+     unsigned char *tidptr;
+     uint16_t tid, sid;
+-    uint16_t cache_tid, cache_sid;
++    uint16_t cache_tid = 0, cache_sid = 0;
+     l2tp_tunnel *tunnel;
+     l2tp_session *ses = NULL;
+     int mandatory, hidden, err;
+@@ -337,7 +339,7 @@ l2tp_dgram_take_from_wire(struct sockaddr_in *from)
+     while(1) {
+ 	if (--iters <= 0) return NULL;
+ 	framelen = -1;
+-	r = recvfrom(Sock, buf, MAX_PACKET_LEN, 0,
++	r = recvfrom(fd, buf, MAX_PACKET_LEN, 0,
+ 		     (struct sockaddr *) from, &len);
+ 	if (r <= 0) {
+ 	    return NULL;
+@@ -509,8 +511,8 @@ l2tp_dgram_take_from_wire(struct sockaddr_in *from)
+ 	    (unsigned int) msg[1];
+     }
+     DBG(l2tp_db(DBG_XMIT_RCV,
+-	   "dgram_take_from_wire() -> %s\n",
+-	   l2tp_debug_describe_dgram(dgram)));
++	   "dgram_take_from_wire(%d) -> %s\n",
++	   fd, l2tp_debug_describe_dgram(dgram)));
+     return dgram;
+ }
+ 
+@@ -535,7 +537,8 @@ l2tp_dgram_send_to_wire(l2tp_dgram const *dgram,
+     unsigned char *len_ptr = NULL;
+ 
+     DBG(l2tp_db(DBG_XMIT_RCV,
+-	   "dgram_send_to_wire() -> %s\n",
++	   "dgram_send_to_wire(%s:%d) -> %s\n", 
++	   inet_ntoa(to->sin_addr), ntohs(to->sin_port),
+ 	   l2tp_debug_describe_dgram(dgram)));
+     buf[0] = dgram->bits;
+     buf[1] = dgram->version;
+diff --git a/handlers/sync-pppd.c b/handlers/sync-pppd.c
+index 6f2843f..fb7af6c 100644
+--- a/handlers/sync-pppd.c
++++ b/handlers/sync-pppd.c
+@@ -1,3 +1,4 @@
++/* Modifications were made by Belkin International, Inc. on or before Fri Sep 13 14:13:39 PDT 2013 */
+ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+ /***********************************************************************
+ *
+@@ -16,13 +17,17 @@
+ ***********************************************************************/
+ 
+ static char const RCSID[] =
+-"$Id: sync-pppd.c,v 1.4 2003/12/22 14:57:33 dskoll Exp $";
++"$Id: sync-pppd.c 3323 2011-09-21 18:45:48Z lly.dev $";
+ 
+ #include "l2tp.h"
+ #include <signal.h>
+ #include <stdio.h>
+ #include <string.h>
+ #include <fcntl.h>
++#include <linux/if.h>
++#include <linux/if_ether.h>
++#include <linux/if_pppol2tp.h>
++#include <linux/if_pppox.h>
+ 
+ #define HANDLER_NAME "sync-pppd"
+ 
+@@ -30,7 +35,11 @@ static char const RCSID[] =
+ 
+ #define MAX_FDS 256
+ 
++#define PPPOL2TP_V1
++
+ extern int pty_get(int *mfp, int *sfp);
++static int establish_tunnel(l2tp_tunnel *tun);
++static void close_tunnel(l2tp_tunnel *tun);
+ static int establish_session(l2tp_session *ses);
+ static void close_session(l2tp_session *ses, char const *reason, int may_reestablish);
+ static void handle_frame(l2tp_session *ses, unsigned char *buf, size_t len);
+@@ -42,6 +51,7 @@ static char *pppd_lac_options[MAX_OPTS+1];
+ static int num_pppd_lns_options = 0;
+ static int num_pppd_lac_options = 0;
+ static int use_unit_option = 0;
++static int kernel_mode = 1;
+ static char *pppd_path = NULL;
+ 
+ #define PUSH_LNS_OPT(x) pppd_lns_options[num_pppd_lns_options++] = (x)
+@@ -51,7 +61,19 @@ static char *pppd_path = NULL;
+ static l2tp_call_ops my_ops = {
+     establish_session,
+     close_session,
+-    handle_frame
++    handle_frame,
++    establish_tunnel,
++    close_tunnel
++};
++
++/* Tunnel private info */
++struct master {
++    EventSelector *es;		/* Event selector */
++    int fd;			/* Tunnel UDP socket for event-handler loop */
++#ifdef PPPOL2TP_V1
++    int m_fd;			/* Tunnel PPPO2TP socket */
++#endif
++    EventHandler *event;	/* Event handler */
+ };
+ 
+ /* The slave process */
+@@ -72,6 +94,7 @@ static l2tp_opt_descriptor my_opts[] = {
+     { "lac-pppd-opts",     OPT_TYPE_CALLFUNC,   (void *) handle_lac_opts},
+     { "lns-pppd-opts",     OPT_TYPE_CALLFUNC,   (void *) handle_lns_opts},
+     { "set-ppp-if-name",   OPT_TYPE_BOOL,       &use_unit_option},
++    { "kernel-mode",       OPT_TYPE_BOOL,       &kernel_mode},
+     { "pppd-path",         OPT_TYPE_STRING,     &pppd_path},
+     { NULL,                OPT_TYPE_BOOL,       NULL }
+ };
+@@ -146,6 +169,10 @@ handle_frame(l2tp_session *ses,
+     int n;
+ 
+     if (!sl) return;
++    if (kernel_mode) {
++	l2tp_set_errmsg("Attempt to write %d bytes to kernel tunnel fd.", len);
++	return;
++    }
+ 
+     /* Add framing bytes */
+     *--buf = 0x03;
+@@ -153,7 +180,9 @@ handle_frame(l2tp_session *ses,
+     len += 2;
+ 
+     /* TODO: Add error checking */
+-    n = write(sl->fd, buf, len);
++    if (sl->fd < 0) {
++        l2tp_set_errmsg("Attempt to write %d bytes to non existent fd.", len);
++    } else n = write(sl->fd, buf, len);
+ }
+ 
+ /**********************************************************************
+@@ -177,14 +206,15 @@ close_session(l2tp_session *ses, char const *reason, int may_reestablish)
+     ses->private = NULL;
+     sl->ses = NULL;
+ 
+-    kill(SIGTERM, sl->pid);
+-    close(sl->fd);
++    kill(sl->pid, SIGTERM);
++    if (sl->fd >= 0) close(sl->fd);
+     sl->fd = -1;
+-    Event_DelHandler(sl->es, sl->event);
++    if (sl->event) Event_DelHandler(sl->es, sl->event);
+     sl->event = NULL;
+ 
+     /* Re-establish session if desired */
+-    if (may_reestablish && tunnel->peer->persist && tunnel->peer->fail < tunnel->peer->maxfail) {
++    if (may_reestablish && tunnel->peer->persist && 
++        (tunnel->peer->maxfail == 0 || tunnel->peer->fail++ < tunnel->peer->maxfail)) {
+         struct timeval t;
+ 
+         t.tv_sec = tunnel->peer->holdoff;
+@@ -215,8 +245,21 @@ slave_exited(pid_t pid, int status, void *data)
+ 
+     if (sl->fd >= 0) close(sl->fd);
+     if (sl->event) Event_DelHandler(sl->es, sl->event);
++    sl->fd = -1;
++    sl->event = NULL;
+ 
+     if (ses) {
++        l2tp_tunnel *tunnel = ses->tunnel;
++
++        /* Re-establish session if desired */
++        if (tunnel->peer->persist) {
++            struct timeval t;
++
++            t.tv_sec = tunnel->peer->holdoff;
++            t.tv_usec = 0;
++            Event_AddTimerHandler(tunnel->es, t, l2tp_tunnel_reestablish, tunnel->peer);
++        }
++        
+ 	ses->private = NULL;
+ 	l2tp_session_send_CDN(ses, RESULT_GENERAL_REQUEST, 0,
+ 			      "pppd process exited");
+@@ -343,12 +386,15 @@ next_loop:
+ static int
+ establish_session(l2tp_session *ses)
+ {
+-    int m_pty, s_pty;
++    int m_pty = -1, s_pty;
++    struct sockaddr_pppol2tp sax;
+     pid_t pid;
+     EventSelector *es = ses->tunnel->es;
++    struct master *tun = ses->tunnel->private;
+     struct slave *sl = malloc(sizeof(struct slave));
+-    int i;
+-    char unit[32];
++    int i, flags;
++    char unit[32], fdstr[10];
++    char tidstr[10], sidstr[10];
+ 
+     ses->private = NULL;
+     if (!sl) return -1;
+@@ -356,21 +402,68 @@ establish_session(l2tp_session *ses)
+     sl->es = es;
+ 
+     /* Get pty */
+-    if (pty_get(&m_pty, &s_pty) < 0) {
+-	free(sl);
+-	return -1;
++    if (kernel_mode) {
++	if (!tun) {
++	    free(sl);
++	    return -1;
++	}
++        s_pty = socket(AF_PPPOX, SOCK_DGRAM, PX_PROTO_OL2TP);
++        if (s_pty < 0) {
++            l2tp_set_errmsg("Unable to allocate PPPoL2TP socket.");
++	    free(sl);
++            return -1;
++        }
++        flags = fcntl(s_pty, F_GETFL);
++        if (flags == -1 || fcntl(s_pty, F_SETFL, flags | O_NONBLOCK) == -1) {
++            l2tp_set_errmsg("Unable to set PPPoL2TP socket nonblock.");
++	    close(s_pty);
++	    free(sl);
++            return -1;
++        }
++        sax.sa_family = AF_PPPOX;
++        sax.sa_protocol = PX_PROTO_OL2TP;
++        sax.pppol2tp.pid = 0;
++        sax.pppol2tp.fd = tun->fd;
++        sax.pppol2tp.addr.sin_addr.s_addr = ses->tunnel->peer_addr.sin_addr.s_addr;
++        sax.pppol2tp.addr.sin_port = ses->tunnel->peer_addr.sin_port;
++        sax.pppol2tp.addr.sin_family = AF_INET;
++        sax.pppol2tp.s_tunnel  = ses->tunnel->my_id;
++        sax.pppol2tp.s_session = ses->my_id;
++        sax.pppol2tp.d_tunnel  = ses->tunnel->assigned_id;
++        sax.pppol2tp.d_session = ses->assigned_id;
++        if (connect(s_pty, (struct sockaddr *)&sax, sizeof(sax)) < 0) {
++            l2tp_set_errmsg("Unable to connect PPPoL2TP socket.");
++	    close(s_pty);
++	    free(sl);
++            return -1;
++        }
++	snprintf (fdstr, sizeof(fdstr), "%d", s_pty);
++	snprintf (tidstr, sizeof(tidstr), "%d", ses->tunnel->my_id);
++	snprintf (sidstr, sizeof(sidstr), "%d", ses->my_id);
++    } else {
++	if (pty_get(&m_pty, &s_pty) < 0) {
++	    free(sl);
++	    return -1;
++	}
++	if (fcntl(m_pty, F_SETFD, FD_CLOEXEC) == -1) {
++	    l2tp_set_errmsg("Unable to set FD_CLOEXEC");
++	    close(m_pty);
++	    close(s_pty);
++	    free(sl);
++	    return -1;
++	}
+     }
+ 
+     /* Fork */
+     pid = fork();
+     if (pid == (pid_t) -1) {
++	if (m_pty >= 0) close(m_pty);
++	close(s_pty);
+ 	free(sl);
+ 	return -1;
+     }
+ 
+     if (pid) {
+-	int flags;
+-
+ 	/* In the parent */
+ 	sl->pid = pid;
+ 
+@@ -382,13 +475,16 @@ establish_session(l2tp_session *ses)
+ 
+ 	sl->fd = m_pty;
+ 
+-	/* Set slave FD non-blocking */
+-	flags = fcntl(sl->fd, F_GETFL);
+-	if (flags >= 0) fcntl(sl->fd, F_SETFL, (long) flags | O_NONBLOCK);
++	if (!kernel_mode) {
++            /* Set slave FD non-blocking */
++	    flags = fcntl(sl->fd, F_GETFL);
++	    if (flags >= 0) fcntl(sl->fd, F_SETFL, (long) flags | O_NONBLOCK);
+ 
+-	/* Handle readability on slave end */
+-	sl->event = Event_AddHandler(es, m_pty, EVENT_FLAG_READABLE,
++	    /* Handle readability on slave end */
++	    sl->event = Event_AddHandler(es, m_pty, EVENT_FLAG_READABLE,
+ 			 readable, ses);
++	} else
++	    sl->event = NULL;
+ 
+ 	ses->private = sl;
+ 	return 0;
+@@ -401,9 +497,11 @@ establish_session(l2tp_session *ses)
+     }
+ 
+     /* Dup s_pty onto stdin and stdout */
+-    dup2(s_pty, 0);
+-    dup2(s_pty, 1);
+-    if (s_pty > 1) close(s_pty);
++    if (!kernel_mode) {
++    	dup2(s_pty, 0);
++    	dup2(s_pty, 1);
++        if (s_pty > 1) close(s_pty);
++    }
+ 
+     /* Create unit */
+     sprintf(unit, "%d", (int) getpid());
+@@ -416,6 +514,13 @@ establish_session(l2tp_session *ses)
+ 	    PUSH_LAC_OPT("unit");
+ 	    PUSH_LAC_OPT(unit);
+ 	}
++	/* Push plugin options */
++	if (kernel_mode && num_pppd_lac_options <= MAX_OPTS-4) {
++	    PUSH_LAC_OPT("plugin");
++	    PUSH_LAC_OPT("pppol2tp.so");
++	    PUSH_LAC_OPT("pppol2tp");
++	    PUSH_LAC_OPT(fdstr);
++	}
+         /* push peer specific options */
+         lac_opt = ses->tunnel->peer->lac_options;
+         while (*lac_opt) {
+@@ -439,6 +544,18 @@ establish_session(l2tp_session *ses)
+ 	    PUSH_LNS_OPT("unit");
+ 	    PUSH_LNS_OPT(unit);
+ 	}
++	/* Push plugin options */
++	if (kernel_mode && num_pppd_lac_options <= MAX_OPTS-5) {
++	    PUSH_LNS_OPT("plugin");
++	    PUSH_LNS_OPT("pppol2tp.so");
++	    PUSH_LNS_OPT("pppol2tp");
++	    PUSH_LNS_OPT(fdstr);
++	    PUSH_LNS_OPT("pppol2tp_lns_mode");
++	    PUSH_LNS_OPT("pppol2tp_tunnel_id");
++	    PUSH_LNS_OPT(tidstr);
++	    PUSH_LNS_OPT("pppol2tp_session_id");
++	    PUSH_LNS_OPT(sidstr);
++	}
+         /* push peer specific options */
+         lns_opt = ses->tunnel->peer->lns_options;
+         while (*lns_opt) {
+@@ -460,6 +577,143 @@ establish_session(l2tp_session *ses)
+     _exit(1);
+ }
+ 
++static int establish_tunnel(l2tp_tunnel *tunnel)
++{
++    EventSelector *es = tunnel->es;
++    struct master *tun;
++    struct sockaddr_in addr;
++    socklen_t sock_len;
++    int fd = -1;
++#ifdef PPPOL2TP_V1
++    struct sockaddr_pppol2tp sax;
++    int m_fd = -1;
++#endif
++    int flags;
++
++    if (!kernel_mode)
++	return 0;
++
++    tunnel->private = NULL;
++    tun = malloc(sizeof(struct master));
++    if (!tun) return -1;
++
++    fd = socket(PF_INET, SOCK_DGRAM, 0);
++    if (fd < 0) {
++	l2tp_set_errmsg("Unable to allocate tunnel UDP socket: %s");
++	goto err;
++    }
++
++    addr = tunnel->peer_addr;
++    if (connect(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
++	l2tp_set_errmsg("Unable to connect tunnel UDP socket.");
++	goto err;
++    }
++
++    sock_len = sizeof(struct sockaddr_in);
++    if ((getsockname(fd, (struct sockaddr*) &addr, &sock_len) < 0) ||
++        (sock_len != sizeof(struct sockaddr_in))) {
++	l2tp_set_errmsg("Unable to get name of tunnel UDP socket");
++	goto err;
++    }
++    close(fd);
++
++    fd = socket(PF_INET, SOCK_DGRAM, 0);
++    if (fd < 0) {
++	l2tp_set_errmsg("Unable to allocate tunnel UDP socket: %s");
++	goto err;
++    }
++
++    flags = 1;
++    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &flags, sizeof(flags));
++    setsockopt(fd, SOL_SOCKET, SO_NO_CHECK, &flags, sizeof(flags));
++
++    /* Already set by getsockname
++    addr.sin_family = AF_INET;
++    addr.sin_addr = Settings.listen_addr; */
++    addr.sin_port = htons((uint16_t) Settings.listen_port);
++    if (bind(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
++	l2tp_set_errmsg("Unable to bind tunnel UDP socket.");
++	goto err;
++    }
++
++    addr = tunnel->peer_addr;
++    if (connect(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
++	l2tp_set_errmsg("Unable to connect tunnel UDP socket.");
++	goto err;
++    }
++
++    flags = fcntl(fd, F_GETFL);
++    if (flags < 0 || fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0) {
++	l2tp_set_errmsg("Unable to set tunnel UDP socket nonblock.");
++	goto err;
++    }
++
++#ifdef PPPOL2TP_V1
++    m_fd = socket(AF_PPPOX, SOCK_DGRAM, PX_PROTO_OL2TP);
++    if (m_fd < 0) {
++        l2tp_set_errmsg("Unable to allocate tunnel PPPoL2TP socket.");
++        goto err;
++    }
++
++    flags = fcntl(m_fd, F_GETFL);
++    if (flags < 0 || fcntl(m_fd, F_SETFL, flags | O_NONBLOCK) < 0) {
++	l2tp_set_errmsg("Unable to set tunnel PPPoL2TP socket nonblock.");
++	goto err;
++    }
++
++    sax.sa_family = AF_PPPOX;
++    sax.sa_protocol = PX_PROTO_OL2TP;
++    sax.pppol2tp.pid = 0;
++    sax.pppol2tp.fd = fd;
++    sax.pppol2tp.addr.sin_addr.s_addr = tunnel->peer_addr.sin_addr.s_addr;
++    sax.pppol2tp.addr.sin_port = tunnel->peer_addr.sin_port;
++    sax.pppol2tp.addr.sin_family = AF_INET;
++    sax.pppol2tp.s_tunnel  = tunnel->my_id;
++    sax.pppol2tp.s_session = 0;
++    sax.pppol2tp.d_tunnel  = tunnel->assigned_id;
++    sax.pppol2tp.d_session = 0;
++    if (connect(m_fd, (struct sockaddr *)&sax, sizeof(sax)) < 0) {
++	l2tp_set_errmsg("Unable to connect tunnel PPPoL2TP socket.");
++	goto err;
++    }
++#endif
++
++    tunnel->private = tun;
++    tun->es = es;
++    tun->fd = fd;
++#ifdef PPPOL2TP_V1
++    tun->m_fd = m_fd;
++#endif
++    tun->event = Event_AddHandler(es, fd, EVENT_FLAG_READABLE,
++				  network_readable, NULL);
++    return 0;
++
++err:
++    if (fd >= 0) close(fd);
++#ifdef PPPOL2TP_V1
++    if (m_fd >= 0) close(tun->m_fd);
++#endif
++    if (tun) free(tun);
++    return -1;
++}
++
++static void close_tunnel(l2tp_tunnel *tunnel)
++{
++    struct master *tun = tunnel->private;
++
++    if (!kernel_mode || !tun)
++	return;
++
++    tunnel->private = NULL;
++#ifdef PPPOL2TP_V1
++    if (tun->m_fd >= 0) close(tun->m_fd);
++#endif
++    if (tun->fd >= 0) close(tun->fd);
++    if (tun->event) Event_DelHandler(tun->es, tun->event);
++
++    free(tun);
++}
++
+ static l2tp_lns_handler my_lns_handler = {
+     NULL,
+     HANDLER_NAME,
+diff --git a/l2tp.h b/l2tp.h
+index 8ca431c..3a81b25 100644
+--- a/l2tp.h
++++ b/l2tp.h
+@@ -1,3 +1,4 @@
++/* Modifications were made by Belkin International, Inc. on or before Fri Sep 13 14:13:39 PDT 2013 */
+ /***********************************************************************
+ *
+ * lt2p.h
+@@ -132,6 +133,8 @@ typedef struct l2tp_tunnel_t {
+     unsigned char response[MD5LEN]; /* Our response to challenge */
+     unsigned char expected_response[MD5LEN]; /* Expected resp. to challenge */
+     int state;			/* Tunnel state */
++    struct l2tp_call_ops_t *call_ops; /* Call ops                      */
++    void *private;		/* Private data for call-op's use */
+ } l2tp_tunnel;
+ 
+ /* A session within a tunnel */
+@@ -172,6 +175,14 @@ typedef struct l2tp_call_ops_t {
+     /* Called when a PPP frame arrives over tunnel */
+     void (*handle_ppp_frame)(l2tp_session *ses, unsigned char *buf,
+ 			     size_t len);
++
++    /* Called once tunnel has been established (LAC) or when we want
++       to establish tunnel (LNS) */
++    int (*tunnel_establish)(l2tp_tunnel *tun);
++
++    /* Called when tunnel must be closed.  May be called without
++       established() being called if tunnel could not be established.*/
++    void (*tunnel_close)(l2tp_tunnel *tun);
+ } l2tp_call_ops;
+ 
+ /* an LNS handler */
+@@ -397,7 +408,7 @@ l2tp_session *l2tp_session_call_lns(l2tp_peer *peer,
+ l2tp_dgram *l2tp_dgram_new(size_t len);
+ l2tp_dgram *l2tp_dgram_new_control(uint16_t msg_type, uint16_t tid, uint16_t sid);
+ void l2tp_dgram_free(l2tp_dgram *dgram);
+-l2tp_dgram *l2tp_dgram_take_from_wire(struct sockaddr_in *from);
++l2tp_dgram *l2tp_dgram_take_from_wire(int fd, struct sockaddr_in *from);
+ int l2tp_dgram_send_to_wire(l2tp_dgram const *dgram,
+ 		       struct sockaddr_in const *to);
+ int l2tp_dgram_send_ppp_frame(l2tp_session *ses, unsigned char const *buf,
+@@ -450,6 +461,7 @@ extern int Sock;
+ extern char Hostname[MAX_HOSTNAME];
+ 
+ int l2tp_network_init(EventSelector *es);
++void network_readable(EventSelector *es, int fd, unsigned int flags, void *data);
+ 
+ /* peer.c */
+ void l2tp_peer_init(void);
+diff --git a/main.c b/main.c
+index fa930ba..4547518 100644
+--- a/main.c
++++ b/main.c
+@@ -1,3 +1,4 @@
++/* Modifications were made by Belkin International, Inc. on or before Fri Sep 13 14:13:39 PDT 2013 */
+ /***********************************************************************
+ *
+ * main.c
+@@ -23,6 +24,7 @@ static char const RCSID[] =
+ #include <signal.h>
+ #include <fcntl.h>
+ #include <stdlib.h>
++#include <syslog.h>
+ 
+ static void
+ usage(int argc, char *argv[], int exitcode)
+@@ -38,6 +40,20 @@ usage(int argc, char *argv[], int exitcode)
+     exit(exitcode);
+ }
+ 
++static void
++sighandler(int signum)
++{
++    static int count = 0;
++
++    count++;
++    fprintf(stderr, "Caught signal %d times\n", count);
++    if (count < 5) {
++	l2tp_cleanup();
++    }
++    exit(EXIT_FAILURE);
++}
++
++
+ int
+ main(int argc, char *argv[])
+ {
+@@ -47,7 +63,7 @@ main(int argc, char *argv[])
+     int do_fork = 1;
+     int debugmask = 0;
+ 
+-    while((opt = getopt(argc, argv, "d:fh")) != -1) {
++    while((opt = getopt(argc, argv, "d:p:fh")) != -1) {
+ 	switch(opt) {
+ 	case 'h':
+ 	    usage(argc, argv, EXIT_SUCCESS);
+@@ -72,7 +88,7 @@ main(int argc, char *argv[])
+ 	l2tp_die();
+     }
+ 
+-    if (!l2tp_network_init(es)) {
++    if (l2tp_network_init(es) < 0) {
+ 	l2tp_die();
+     }
+ 
+@@ -112,6 +128,10 @@ main(int argc, char *argv[])
+ 	}
+     }
+ 
++
++    Event_HandleSignal(es, SIGINT, sighandler);
++    Event_HandleSignal(es, SIGTERM, sighandler);
++
+     while(1) {
+ 	i = Event_HandleEvent(es);
+ 	if (i < 0) {
+diff --git a/network.c b/network.c
+index ec1ab90..bb22746 100644
+--- a/network.c
++++ b/network.c
+@@ -1,3 +1,4 @@
++/* Modifications were made by Belkin International, Inc. on or before Fri Sep 13 14:13:39 PDT 2013 */
+ /***********************************************************************
+ *
+ * network.c
+@@ -16,7 +17,7 @@
+ ***********************************************************************/
+ 
+ static char const RCSID[] =
+-"$Id: network.c,v 1.3 2003/06/11 02:17:17 dossy Exp $";
++"$Id: network.c 3323 2011-09-21 18:45:48Z lly.dev $";
+ 
+ #include "l2tp.h"
+ #include "event.h"
+@@ -32,25 +33,8 @@ static char const RCSID[] =
+ int Sock = -1;
+ 
+ static EventHandler *NetworkReadHandler = NULL;
+-static void network_readable(EventSelector *es,
+-			     int fd,
+-			     unsigned int flags,
+-			     void *data);
+ char Hostname[MAX_HOSTNAME];
+ 
+-static void
+-sigint_handler(int sig)
+-{
+-    static int count = 0;
+-
+-    count++;
+-    fprintf(stderr, "In sigint handler: %d\n", count);
+-    if (count < 5) {
+-	l2tp_cleanup();
+-    }
+-    exit(1);
+-}
+-
+ /**********************************************************************
+ * %FUNCTION: network_init
+ * %ARGUMENTS:
+@@ -70,7 +54,6 @@ l2tp_network_init(EventSelector *es)
+     gethostname(Hostname, sizeof(Hostname));
+     Hostname[sizeof(Hostname)-1] = 0;
+ 
+-    Event_HandleSignal(es, SIGINT, sigint_handler);
+     if (Sock >= 0) {
+ 	if (NetworkReadHandler) {
+ 	    Event_DelHandler(es, NetworkReadHandler);
+@@ -85,6 +68,10 @@ l2tp_network_init(EventSelector *es)
+ 	return -1;
+     }
+ 
++    flags = 1;
++    setsockopt(Sock, SOL_SOCKET, SO_REUSEADDR, &flags, sizeof(flags));
++    setsockopt(Sock, SOL_SOCKET, SO_NO_CHECK, &flags, sizeof(flags));
++
+     me.sin_family = AF_INET;
+     me.sin_addr = Settings.listen_addr;
+     me.sin_port = htons((uint16_t) Settings.listen_port);
+@@ -118,16 +105,15 @@ l2tp_network_init(EventSelector *es)
+ * %DESCRIPTION:
+ *  Called when a packet arrives on the UDP socket.
+ ***********************************************************************/
+-static void
++void
+ network_readable(EventSelector *es,
+ 		 int fd,
+ 		 unsigned int flags,
+ 		 void *data)
+ {
+     l2tp_dgram *dgram;
+-
+     struct sockaddr_in from;
+-    dgram = l2tp_dgram_take_from_wire(&from);
++    dgram = l2tp_dgram_take_from_wire(fd, &from);
+     if (!dgram) return;
+ 
+     /* It's a control packet if we get here */
+diff --git a/session.c b/session.c
+index bdfea10..d5bff7c 100644
+--- a/session.c
++++ b/session.c
+@@ -1,3 +1,4 @@
++/* Modifications were made by Belkin International, Inc. on or before Fri Sep 13 14:13:39 PDT 2013 */
+ /***********************************************************************
+ *
+ * session.c
+@@ -14,7 +15,7 @@
+ ***********************************************************************/
+ 
+ static char const RCSID[] =
+-"$Id: session.c,v 1.3 2003/12/22 14:57:33 dskoll Exp $";
++"$Id: session.c 3323 2011-09-21 18:45:48Z lly.dev $";
+ 
+ #include "l2tp.h"
+ #include <stddef.h>
+@@ -473,7 +474,7 @@ l2tp_session_handle_CDN(l2tp_session *ses,
+     val = l2tp_dgram_search_avp(dgram, ses->tunnel, NULL, NULL, &len,
+ 				VENDOR_IETF, AVP_RESULT_CODE);
+     if (!val || len < 4) {
+-	l2tp_tunnel_delete_session(ses, "Received CDN", 0);
++	l2tp_tunnel_delete_session(ses, "Received CDN", 1);
+     } else {
+ 	uint16_t result_code, error_code;
+ 	char *msg;
+@@ -486,7 +487,7 @@ l2tp_session_handle_CDN(l2tp_session *ses,
+ 	}
+ 	snprintf(buf, sizeof(buf), "Received CDN: result-code = %d, error-code = %d, message = '%.*s'", result_code, error_code, (int) len-4, msg);
+ 	buf[1023] = 0;
+-	l2tp_tunnel_delete_session(ses, buf, 0);
++	l2tp_tunnel_delete_session(ses, buf, 1);
+     }
+ }
+ 
+@@ -563,7 +564,7 @@ l2tp_session_handle_ICRP(l2tp_session *ses,
+     /* TODO: Speed, etc. are faked for now. */
+ 
+     /* Connect speed */
+-    u32 = htonl(57600);
++    u32 = htonl(100000000);
+     l2tp_dgram_add_avp(dgram, tunnel, MANDATORY,
+ 		  sizeof(u32), VENDOR_IETF, AVP_TX_CONNECT_SPEED, &u32);
+ 
+diff --git a/tunnel.c b/tunnel.c
+index ecf3288..dd3cbad 100644
+--- a/tunnel.c
++++ b/tunnel.c
+@@ -1,3 +1,4 @@
++/* Modifications were made by Belkin International, Inc. on or before Fri Sep 13 14:13:39 PDT 2013 */
+ /***********************************************************************
+ *
+ * tunnel.c
+@@ -5,6 +6,8 @@
+ * Functions for manipulating L2TP tunnel objects.
+ *
+ * Copyright (C) 2002 Roaring Penguin Software Inc.
++* Copyright (C) 2005-2007 Oleg I. Vdovikin (oleg@cs.msu.su)
++*	Persist fixes, route manipulation
+ *
+ * This software may be distributed under the terms of the GNU General
+ * Public License, Version 2, or (at your option) any later version.
+@@ -21,6 +24,11 @@ static char const RCSID[] =
+ #include <stdarg.h>
+ #include <stdio.h>
+ #include <string.h>
++#include <errno.h>
++#include <sys/ioctl.h>
++#include <netdb.h>
++#include <features.h>
++#include <resolv.h>
+ 
+ /* Hash tables of all tunnels */
+ static hash_table tunnels_by_my_id;
+@@ -437,13 +445,14 @@ tunnel_new(EventSelector *es)
+ 
+     memset(tunnel, 0, sizeof(l2tp_tunnel));
+     l2tp_session_hash_init(&tunnel->sessions_by_my_id);
+-    tunnel->rws = 4;
++    tunnel->rws = 8;
+     tunnel->peer_rws = 1;
+     tunnel->es = es;
+     tunnel->timeout = 1;
+     tunnel->my_id = tunnel_make_tid();
+     tunnel->ssthresh = 1;
+     tunnel->cwnd = 1;
++    tunnel->private = NULL;
+ 
+     hash_insert(&tunnels_by_my_id, tunnel);
+     DBG(l2tp_db(DBG_TUNNEL, "tunnel_new() -> %s\n", l2tp_debug_tunnel_to_str(tunnel)));
+@@ -483,6 +492,13 @@ tunnel_free(l2tp_tunnel *tunnel)
+     while(tunnel->xmit_queue_head) {
+ 	tunnel_dequeue_head(tunnel);
+     }
++
++    DBG(l2tp_db(DBG_TUNNEL, "tunnel_close(%s) ops: %p\n",
++	l2tp_debug_tunnel_to_str(tunnel), tunnel->call_ops));
++    if (tunnel->call_ops && tunnel->call_ops->tunnel_close) {
++	tunnel->call_ops->tunnel_close(tunnel);
++    }
++
+     memset(tunnel, 0, sizeof(l2tp_tunnel));
+     free(tunnel);
+ }
+@@ -501,12 +517,43 @@ static l2tp_tunnel *
+ tunnel_establish(l2tp_peer *peer, EventSelector *es)
+ {
+     l2tp_tunnel *tunnel;
+-
++    struct sockaddr_in peer_addr = peer->addr;
++    struct hostent *he;
++
++    /* check peer_addr and resolv it based on the peername if needed */
++    if (peer_addr.sin_addr.s_addr == INADDR_ANY) {
++#if !defined(__UCLIBC__) \
++ || (__UCLIBC_MAJOR__ == 0 \
++ && (__UCLIBC_MINOR__ < 9 || (__UCLIBC_MINOR__ == 9 && __UCLIBC_SUBLEVEL__ < 31)))
++	/* force ns refresh from resolv.conf with uClibc pre-0.9.31 */
++	res_init();
++#endif
++	he = gethostbyname(peer->peername);
++	if (!he) {
++            l2tp_set_errmsg("tunnel_establish: gethostbyname failed for '%s'", peer->peername);
++	    if (peer->persist && (peer->maxfail == 0 || peer->fail++ < peer->maxfail)) 
++	    {
++		struct timeval t;
++
++		t.tv_sec = peer->holdoff;
++		t.tv_usec = 0;
++		Event_AddTimerHandler(es, t, l2tp_tunnel_reestablish, peer);
++	    }
++	    return NULL;
++	}
++	memcpy(&peer_addr.sin_addr, he->h_addr, sizeof(peer_addr.sin_addr));
++    }
++    
+     tunnel = tunnel_new(es);
+     if (!tunnel) return NULL;
+ 
+     tunnel->peer = peer;
+-    tunnel->peer_addr = peer->addr;
++    tunnel->peer_addr = peer_addr;
++    tunnel->call_ops = tunnel->peer->lac_ops;
++
++    DBG(l2tp_db(DBG_TUNNEL, "tunnel_establish(%s) -> %s (%s)\n",
++	    l2tp_debug_tunnel_to_str(tunnel),
++	    inet_ntoa(peer_addr.sin_addr), peer->peername));
+ 
+     hash_insert(&tunnels_by_peer_address, tunnel);
+     tunnel_send_SCCRQ(tunnel);
+@@ -552,7 +599,7 @@ tunnel_send_SCCRQ(l2tp_tunnel *tunnel)
+     l2tp_dgram_add_avp(dgram, tunnel, MANDATORY,
+ 		  sizeof(u32), VENDOR_IETF, AVP_FRAMING_CAPABILITIES, &u32);
+ 
+-    hostname = tunnel->peer->hostname ? tunnel->peer->hostname : Hostname;
++    hostname = tunnel->peer->hostname[0] ? tunnel->peer->hostname : Hostname;
+ 
+     /* Host name */
+     l2tp_dgram_add_avp(dgram, tunnel, MANDATORY,
+@@ -631,8 +678,8 @@ l2tp_tunnel_handle_received_control_datagram(l2tp_dgram *dgram,
+ 
+     if (!tunnel) {
+ 	/* TODO: Send error message back? */
+-	l2tp_set_errmsg("Invalid control message - unknown tunnel ID %d",
+-		   (int) dgram->tid);
++	DBG(l2tp_db(DBG_TUNNEL, "Invalid control message - unknown tunnel ID %d\n",
++		   (int) dgram->tid));
+ 	return;
+     }
+ 
+@@ -774,7 +821,7 @@ tunnel_handle_SCCRQ(l2tp_dgram *dgram,
+     l2tp_dgram_add_avp(dgram, tunnel, MANDATORY,
+ 		  sizeof(u32), VENDOR_IETF, AVP_FRAMING_CAPABILITIES, &u32);
+ 
+-    hostname = tunnel->peer->hostname ? tunnel->peer->hostname : Hostname;
++    hostname = tunnel->peer->hostname[0] ? tunnel->peer->hostname : Hostname;
+ 
+     /* Host name */
+     l2tp_dgram_add_avp(dgram, tunnel, MANDATORY,
+@@ -947,6 +994,8 @@ tunnel_handle_timeout(EventSelector *es,
+ 
+     /* Timeout handler has fired */
+     tunnel->timeout_handler = NULL;
++    DBG(l2tp_db(DBG_FLOW, "tunnel_handle_timeout(%s)\n",
++	   l2tp_debug_tunnel_to_str(tunnel)));
+ 
+     /* Reset xmit_new_dgrams */
+     tunnel->xmit_new_dgrams = tunnel->xmit_queue_head;
+@@ -966,6 +1015,17 @@ tunnel_handle_timeout(EventSelector *es,
+     if (tunnel->retransmissions >= MAX_RETRANSMISSIONS) {
+ 	l2tp_set_errmsg("Too many retransmissions on tunnel (%s); closing down",
+ 		   l2tp_debug_tunnel_to_str(tunnel));
++		   
++	if (tunnel->state < TUNNEL_ESTABLISHED && tunnel->peer && tunnel->peer->persist && 
++	    (tunnel->peer->maxfail == 0 || tunnel->peer->fail++ < tunnel->peer->maxfail)) 
++	{
++	    struct timeval t;
++
++	    t.tv_sec = tunnel->peer->holdoff;
++	    t.tv_usec = 0;
++	    Event_AddTimerHandler(tunnel->es, t, l2tp_tunnel_reestablish, tunnel->peer);
++	}
++	
+ 	/* Close tunnel... */
+ 	tunnel_free(tunnel);
+ 	return;
+@@ -1167,6 +1227,9 @@ tunnel_process_received_datagram(l2tp_tunnel *tunnel,
+     case MESSAGE_ICCN:
+ 	l2tp_session_handle_ICCN(ses, dgram);
+ 	return;
++    case MESSAGE_HELLO:
++	tunnel_setup_hello(tunnel);
++	return;
+     }
+ }
+ 
+@@ -1253,7 +1316,7 @@ tunnel_send_ZLB(l2tp_tunnel *tunnel)
+ 	return;
+     }
+     dgram->Nr = tunnel->Nr;
+-    dgram->Ns = tunnel->Ns;
++    dgram->Ns = tunnel->Ns_on_wire;
+     l2tp_dgram_send_to_wire(dgram, &tunnel->peer_addr);
+     l2tp_dgram_free(dgram);
+ }
+@@ -1283,6 +1346,15 @@ tunnel_handle_SCCRP(l2tp_tunnel *tunnel,
+     /* Extract tunnel params */
+     if (tunnel_set_params(tunnel, dgram) < 0) return;
+ 
++    DBG(l2tp_db(DBG_TUNNEL, "tunnel_establish(%s) ops: %p\n",
++	l2tp_debug_tunnel_to_str(tunnel), tunnel->call_ops));
++    if (tunnel->call_ops && tunnel->call_ops->tunnel_establish &&
++	tunnel->call_ops->tunnel_establish(tunnel) < 0) {
++	tunnel_send_StopCCN(tunnel, RESULT_GENERAL_ERROR, ERROR_VENDOR_SPECIFIC,
++			    "%s", l2tp_get_errmsg());
++	return;
++    }
++
+     tunnel_set_state(tunnel, TUNNEL_ESTABLISHED);
+     tunnel_setup_hello(tunnel);
+ 
+@@ -1348,7 +1420,8 @@ tunnel_set_params(l2tp_tunnel *tunnel,
+                            l2tp_debug_tunnel_to_str(tunnel), tunnel->peer_hostname));
+ 
+     /* Find peer */
+-    tunnel->peer = l2tp_peer_find(&tunnel->peer_addr, tunnel->peer_hostname);
++    if (tunnel->peer == NULL || tunnel->peer->addr.sin_addr.s_addr != INADDR_ANY)
++	tunnel->peer = l2tp_peer_find(&tunnel->peer_addr, tunnel->peer_hostname);
+ 
+     /* Get assigned tunnel ID */
+     val = l2tp_dgram_search_avp(dgram, tunnel, &mandatory, &hidden, &len,
+@@ -1381,6 +1454,10 @@ tunnel_set_params(l2tp_tunnel *tunnel,
+ 	return -1;
+     }
+ 
++    /* Setup LNS call ops if LAC wasn't set before */
++    if (!tunnel->call_ops)
++	tunnel->call_ops = tunnel->peer->lns_ops;
++
+     /* Pull out and examine AVP's */
+     while(1) {
+ 	val = l2tp_dgram_pull_avp(dgram, tunnel, &mandatory, &hidden,
+@@ -1598,6 +1675,15 @@ tunnel_handle_SCCCN(l2tp_tunnel *tunnel,
+ 	}
+     }
+ 
++    DBG(l2tp_db(DBG_TUNNEL, "tunnel_establish(%s) ops: %p\n",
++	l2tp_debug_tunnel_to_str(tunnel), tunnel->call_ops));
++    if (tunnel->call_ops && tunnel->call_ops->tunnel_establish &&
++	tunnel->call_ops->tunnel_establish(tunnel) < 0) {
++	tunnel_send_StopCCN(tunnel, RESULT_GENERAL_ERROR, ERROR_VENDOR_SPECIFIC,
++			    "%s", l2tp_get_errmsg());
++	return;
++    }
++
+     tunnel_set_state(tunnel, TUNNEL_ESTABLISHED);
+     tunnel_setup_hello(tunnel);
+ 
+@@ -1619,7 +1705,18 @@ l2tp_tunnel *
+ l2tp_tunnel_find_for_peer(l2tp_peer *peer,
+ 		     EventSelector *es)
+ {
+-    l2tp_tunnel *tunnel = tunnel_find_bypeer(peer->addr);
++    l2tp_tunnel *tunnel;
++    void *cursor;
++    
++    if (peer->addr.sin_addr.s_addr == INADDR_ANY)
++    {
++	for (tunnel = hash_start(&tunnels_by_my_id, &cursor);
++	    tunnel && tunnel->peer != peer; 
++	    tunnel = hash_next(&tunnels_by_my_id, &cursor));
++    } else {
++	tunnel = tunnel_find_bypeer(peer->addr);
++    }
++
+     if (tunnel) {
+ 	if (tunnel->state == TUNNEL_WAIT_CTL_REPLY ||
+ 	    tunnel->state == TUNNEL_WAIT_CTL_CONN ||
+@@ -1721,6 +1818,17 @@ l2tp_tunnel_delete_session(l2tp_session *ses, char const *reason, int may_reesta
+ {
+     l2tp_tunnel *tunnel = ses->tunnel;
+ 
++    if (may_reestablish && ses->state < SESSION_ESTABLISHED &&
++	tunnel->peer && tunnel->peer->persist &&
++	(tunnel->peer->maxfail == 0 || tunnel->peer->fail++ < tunnel->peer->maxfail))
++    {
++	struct timeval t;
++
++	t.tv_sec = tunnel->peer->holdoff;
++	t.tv_usec = 0;
++	Event_AddTimerHandler(tunnel->es, t, l2tp_tunnel_reestablish, tunnel->peer);
++    }
++
+     hash_remove(&tunnel->sessions_by_my_id, ses);
+     l2tp_session_free(ses, reason, may_reestablish);
+ 
+@@ -1911,3 +2019,5 @@ l2tp_tunnel_next_session(l2tp_tunnel *tunnel, void **cursor)
+ {
+     return hash_next(&tunnel->sessions_by_my_id, cursor);
+ }
++
++
+-- 
+1.8.4.474.g128a96c
+

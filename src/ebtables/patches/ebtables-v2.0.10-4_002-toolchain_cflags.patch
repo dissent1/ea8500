@@ -1,0 +1,14 @@
+Certain toolchains require different compilation flags. Since ebtables
+does not use configure, the standard method of specifing compilation flags
+does not work. So we add our own -- any toolchain specific flags should be
+added to TOOLCHAIN_CFLAGS.
+--- ebtables-v2.0.10-4.orig/Makefile	2013-05-06 14:50:59.297078872 -0700
++++ ebtables-v2.0.10-4/Makefile	2013-05-06 14:51:15.037115224 -0700
+@@ -19,6 +19,7 @@
+ DESTDIR:=
+ 
+ CFLAGS:=-Wall -Wunused -Werror
++CFLAGS+=$(TOOLCHAIN_CFLAGS)
+ CFLAGS_SH_LIB:=-fPIC -O3
+ CC:=$(CC)
+ 

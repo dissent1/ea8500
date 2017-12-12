@@ -1,0 +1,41 @@
+diff -Naur samba-3.0.34.org/source/client/mount.cifs.c samba-3.0.34/source/client/mount.cifs.c
+--- samba-3.0.34.org/source/client/mount.cifs.c	2009-01-19 02:40:09.000000000 -0800
++++ samba-3.0.34/source/client/mount.cifs.c	2009-05-19 23:32:36.000000000 -0700
+@@ -57,6 +57,8 @@
+  #endif /* _SAMBA_BUILD_ */
+ #endif /* MOUNT_CIFS_VENDOR_SUFFIX */
+ 
++#include "include/config.h"
++
+ #ifndef MS_MOVE 
+ #define MS_MOVE 8192 
+ #endif 
+@@ -86,6 +88,8 @@
+ /* glibc doesn't have strlcpy, strlcat. Ensure we do. JRA. We
+  * don't link to libreplace so need them here. */
+ 
++#ifndef HAVE_STRLCPY
++
+ /* like strncpy but does not 0 fill the buffer and always null
+  *    terminates. bufsize is the size of the destination buffer */
+ static size_t strlcpy(char *d, const char *s, size_t bufsize)
+@@ -99,6 +103,10 @@
+ 	return ret;
+ }
+ 
++#endif 
++
++#ifndef HAVE_STRLCAT
++
+ /* like strncat but does not 0 fill the buffer and always null
+  *    terminates. bufsize is the length of the buffer, which should
+  *       be one more than the maximum resulting string length */
+@@ -121,6 +129,8 @@
+ 	return ret;
+ }
+ 
++#endif
++
+ /* BB finish BB
+ 
+         cifs_umount

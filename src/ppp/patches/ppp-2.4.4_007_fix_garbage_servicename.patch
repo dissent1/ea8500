@@ -1,0 +1,31 @@
+--- ppp-2.4.4-original/pppd/plugins/rp-pppoe/plugin.c	2012-01-06 10:12:30.912785690 -0800
++++ ppp-2.4.4/pppd/plugins/rp-pppoe/plugin.c	2012-01-06 11:16:03.412790947 -0800
+@@ -140,6 +140,28 @@
+     }
+     if (pppd_pppoe_service) {
+         SET_STRING(conn->serviceName, pppd_pppoe_service);
++    } else if (!pppd_pppoe_service && conn->serviceName) {
++    /* 
++     * nirechou@cisco.com: JIRA:VIPER-1917
++     *
++     * Checking whether 'pppd_pppoe_service' has been set with user configured 
++     * service name or not. If 'pppd_pppoe_service' is not set and 
++     * 'conn->serviceName' is set  then most likely 'conn->serviceName' has 
++     * been referring to some garbage value. While performing PPPOE connection 
++     * majority of the time initialization of 'conn->serviceName' is taken care 
++     * by function PPPOEInitDevice().But in some of the scenarios  observered 
++     * that PPPOEInitDevice() function is not called and PPPOEConnectDevice() 
++     * called directly (for scenario like PPPOE connection after receiving LCP 
++     * Termination msg). So in PPPOEConnectDevice() function taking care of 
++     * 'conn->serviceName' intialization.        
++     * If we don't intiailize 'conn->serviceName' and if 'conn->serviceName' is 
++     * referring to some garbage name.During this scenario if we receive PADO 
++     * with service name then PPPOE is not able to figure it out which service 
++     * name need to be used while sending PADR. Eventually it does not send 
++     * PADR.
++     */ 
++        free(conn->serviceName);       	
++        conn->serviceName = NULL; 
+     }
+ 
+     strlcpy(ppp_devnam, devnam, sizeof(ppp_devnam));

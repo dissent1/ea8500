@@ -1,0 +1,5 @@
+ifndef EXPORT_ONLY
+	depends = 
+	configure = ./configure --prefix=/ --host=$(TC) --target=$(TC) --enable-elf-shlibs --disable-debugfs --disable-imager --disable-resizer --disable-defrag --disable-uuidd --disable-nls --disable-tls
+	build = make CC=$(CC)
+endif

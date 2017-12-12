@@ -1,0 +1,44 @@
+diff -Naur linux-orig/net/ipv6/ndisc.c linux-new/net/ipv6/ndisc.c
+--- linux-orig/net/ipv6/ndisc.c	2013-03-06 11:24:30.000000000 +0800
++++ linux-new/net/ipv6/ndisc.c	2014-11-27 16:05:57.000000000 +0800
+@@ -1,3 +1,4 @@
++/* Modifications were made by Linksys on or before Tue Jan  6 08:27:54 PDT 2015 */
+ /*
+  *	Neighbour Discovery for IPv6
+  *	Linux INET6 implementation
+@@ -90,6 +91,7 @@
+ 
+ #include <linux/netfilter.h>
+ #include <linux/netfilter_ipv6.h>
++#include <linux/kmod.h>
+ 
+ static u32 ndisc_hash(const void *pkey,
+ 		      const struct net_device *dev,
+@@ -1137,6 +1139,13 @@
+ 	return in6_dev->cnf.accept_ra;
+ }
+ 
++/* User mode helper parameters */
++static char *cmd_envp[3] = {"HOME=/", "PATH=/sbin:/bin:/usr/sbin:/usr/bin", NULL };
++static char tmp0[128];
++static char tmp1[16];
++static char tmp2[4];
++static char *cmd_argv[4] = {tmp0, tmp1, tmp2, NULL};
++
+ static void ndisc_router_discovery(struct sk_buff *skb)
+ {
+ 	struct ra_msg *ra_msg = (struct ra_msg *)skb_transport_header(skb);
+@@ -1418,6 +1427,13 @@
+ 		ND_PRINTK2(KERN_WARNING
+ 			   "ICMPv6 RA: invalid RA options");
+ 	}
++
++	// we call a script in user space to update the LAN mtu and dhcpv6 client mode
++	sprintf(tmp0, "%s", "/etc/init.d/ipv6_react_to_ra.sh");
++	sprintf(tmp1, "%s", in6_dev->dev->name);
++	sprintf(tmp2, "%s", (in6_dev->if_flags & IF_RA_MANAGED) ? "1" : "0");
++	call_usermodehelper(tmp0, cmd_argv, cmd_envp, UMH_NO_WAIT);
++
+ out:
+ 	if (rt)
+ 		dst_release(&rt->dst);

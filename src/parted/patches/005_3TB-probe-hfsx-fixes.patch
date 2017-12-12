@@ -1,0 +1,86 @@
+diff -cbr parted-1.8.7.current/libparted/fs/hfs/probe.c parted-1.8.7/libparted/fs/hfs/probe.c
+*** parted-1.8.7.current/libparted/fs/hfs/probe.c	2012-08-16 06:27:58.000000000 -0700
+--- parted-1.8.7/libparted/fs/hfs/probe.c	2013-01-02 11:48:52.468655254 -0800
+***************
+*** 1,4 ****
+! /* Modifications were made by Cisco Systems, Inc. on or before Wed Aug 15 11:03:38 PDT 2012 */
+  /*
+      libparted - a library for manipulating disk partitions
+      Copyright (C) 2004, 2005 Free Software Foundation, Inc.
+--- 1,4 ----
+! /* Modifications were made by Cisco Systems, Inc. on or before Wed Jan  2 11:48:38 PST 2013 */
+  /*
+      libparted - a library for manipulating disk partitions
+      Copyright (C) 2004, 2005 Free Software Foundation, Inc.
+***************
+*** 78,84 ****
+  
+  	/* is 5 an intelligent value ? */
+  	if ((geom->length < 5)
+! 	    || (!ped_geometry_read (geom, buf, 2, 1))
+  	    || (mdb->signature != PED_CPU_TO_BE16 (HFS_SIGNATURE)) )
+  		return NULL;
+  
+--- 78,84 ----
+  
+  	/* is 5 an intelligent value ? */
+  	if ((geom->length < 5)
+! 	    || (!ped_geometry_read_512 (geom, buf, 2, 1))
+  	    || (mdb->signature != PED_CPU_TO_BE16 (HFS_SIGNATURE)) )
+  		return NULL;
+  
+***************
+*** 209,215 ****
+  		return NULL;
+  
+  	if ((geom->length < 5)
+! 	    || !ped_geometry_read (geom, buf, 2, 1)
+  	    || (vh->signature != PED_CPU_TO_BE16 (HFSX_SIGNATURE)))
+  		return NULL;
+  
+--- 209,215 ----
+  		return NULL;
+  
+  	if ((geom->length < 5)
+! 	    || !ped_geometry_read_512 (geom, buf, 2, 1)
+  	    || (vh->signature != PED_CPU_TO_BE16 (HFSX_SIGNATURE)))
+  		return NULL;
+  
+***************
+*** 217,228 ****
+  	with my old previous implementations, we only care here
+  	about legal alternate VH positions, like TN1150 describes them */
+  	max = ((PedSector) PED_BE32_TO_CPU (vh->total_blocks) + 1)
+! 		      * ( PED_BE32_TO_CPU (vh->block_size) / PED_SECTOR_SIZE_DEFAULT )
+  		      - 2;
+! 	search = max - ( PED_BE32_TO_CPU (vh->block_size) / PED_SECTOR_SIZE_DEFAULT );
+  	if (!(geom_ret = ped_geometry_new (geom->dev, geom->start,
+  					   search + 2)))
+  		return NULL;
+  	for (; search < max; search++) {
+  		if (!ped_geometry_set (geom_ret, geom_ret->start,
+  				       search + 2)
+--- 217,231 ----
+  	with my old previous implementations, we only care here
+  	about legal alternate VH positions, like TN1150 describes them */
+  	max = ((PedSector) PED_BE32_TO_CPU (vh->total_blocks) + 1)
+! 		      * ( PED_BE32_TO_CPU (vh->block_size) / geom->dev->sector_size )
+  		      - 2;
+! 	search = max - 2 * ( PED_BE32_TO_CPU (vh->block_size) / geom->dev->sector_size ) + 2;
+  	if (!(geom_ret = ped_geometry_new (geom->dev, geom->start,
+  					   search + 2)))
+  		return NULL;
++ 	return geom_ret;
++ 	/* why search, close enough
++ 
+  	for (; search < max; search++) {
+  		if (!ped_geometry_set (geom_ret, geom_ret->start,
+  				       search + 2)
+***************
+*** 234,237 ****
+--- 237,241 ----
+  
+  	ped_geometry_destroy (geom_ret);
+  	return NULL;
++ 	*/
+  }

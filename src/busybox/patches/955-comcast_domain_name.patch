@@ -1,0 +1,15 @@
+--- a/networking/udhcp/dhcpc.c	2016-11-10 19:51:12.191115195 -0800
++++ b/networking/udhcp/dhcpc.c	2016-11-10 20:05:35.979398486 -0800
+@@ -178,10 +178,10 @@ static const char *valid_domain_label(co
+ 				return NULL;
+ 			}
+ 			if (ch < '0' || ch > '9') {
+-				if (ch == '\0' || ch == '.')
++				if (ch == '\0')
+ 					return label;
+ 				/* DNS allows only '-', but we are more permissive */
+-				if (ch != '-' && ch != '_')
++				if (ch != '.' && ch != '-' && ch != '_')
+ 					return NULL;
+ 			}
+ 		}

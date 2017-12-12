@@ -1,0 +1,107 @@
+diff -rcbw parted-1.8.7.patched/include/parted/device.h parted-1.8.7/include/parted/device.h
+*** parted-1.8.7.patched/include/parted/device.h	2007-04-18 14:12:10.000000000 -0700
+--- parted-1.8.7/include/parted/device.h	2012-08-06 16:53:08.054317622 -0700
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Mon Aug  6 16:53:00 PDT 2012 */
+  /*
+      libparted - a library for manipulating disk partitions
+      Copyright (C) 1998 - 2001, 2005 Free Software Foundation, Inc.
+***************
+*** 133,138 ****
+--- 134,141 ----
+  
+  extern int ped_device_read (const PedDevice* dev, void* buffer,
+                              PedSector start, PedSector count);
++ extern int ped_device_read_large (const PedDevice* dev, void* buffer,
++                             PedSector start, PedSector count);
+  extern int ped_device_write (PedDevice* dev, const void* buffer,
+                               PedSector start, PedSector count);
+  extern int ped_device_sync (PedDevice* dev);
+diff -rcbw parted-1.8.7.patched/libparted/device.c parted-1.8.7/libparted/device.c
+*** parted-1.8.7.patched/libparted/device.c	2007-05-09 12:19:10.000000000 -0700
+--- parted-1.8.7/libparted/device.c	2012-08-06 17:05:26.462587155 -0700
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Mon Aug  6 14:55:43 PDT 2012 */
+  /*
+      libparted - a library for manipulating disk partitions
+      Copyright (C) 1999 - 2001, 2005, 2007 Free Software Foundation, Inc.
+***************
+*** 337,343 ****
+   * \return zero on failure.
+   */
+  int
+! ped_device_read (const PedDevice* dev, void* buffer, PedSector start,
+  		 PedSector count)
+  {
+  	PED_ASSERT (dev != NULL, return 0);
+--- 338,344 ----
+   * \return zero on failure.
+   */
+  int
+! ped_device_read_large (const PedDevice* dev, void* buffer, PedSector start,
+  		 PedSector count)
+  {
+  	PED_ASSERT (dev != NULL, return 0);
+***************
+*** 349,354 ****
+--- 350,378 ----
+  }
+  
+  /**
++  * \internal Read count sectors from dev into buffer, beginning with sector
++  * start.
++  * 
++  * \return zero on failure.
++  */
++ int
++ ped_device_read (const PedDevice* dev, void* buffer, PedSector start,
++ 		 PedSector count)
++ {
++ 	PED_ASSERT (dev != NULL, return 0);
++ 	PED_ASSERT (buffer != NULL, return 0);
++ 	PED_ASSERT (!dev->external_mode, return 0);
++ 	PED_ASSERT (dev->open_count > 0, return 0);
++ 
++ 	/* count is in 512 byte sectors, but lower level will read dev->sector_size sectors */
++ 	void* buffer2 = ped_malloc(count * dev->sector_size);
++ 	int ret = (ped_architecture->dev_ops->read) (dev, buffer2, start, count);
++ 	memcpy(buffer, buffer2, count * 512);
++ 	ped_free(buffer2);
++ 	return ret;
++ }
++ 
++ /**
+   * \internal Write count sectors from buffer to dev, starting at sector
+   * start.
+   * 
+diff -rcbw parted-1.8.7.patched/libparted/labels/gpt.c parted-1.8.7/libparted/labels/gpt.c
+*** parted-1.8.7.patched/libparted/labels/gpt.c	2007-05-02 11:18:16.000000000 -0700
+--- parted-1.8.7/libparted/labels/gpt.c	2012-08-06 16:52:29.582603438 -0700
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Mon Aug  6 16:52:21 PDT 2012 */
+  /*
+      libparted - a library for manipulating disk partitions
+  
+***************
+*** 881,887 ****
+  
+  	ptes_size = sizeof (GuidPartitionEntry_t) * gpt_disk_data->entry_count;
+  	ptes = (GuidPartitionEntry_t*) ped_malloc (ptes_size);
+! 	if (!ped_device_read (disk->dev, ptes,
+  			      PED_LE64_TO_CPU(gpt->PartitionEntryLBA),
+  			      ptes_size / disk->dev->sector_size))
+  		goto error_free_ptes;
+--- 882,888 ----
+  
+  	ptes_size = sizeof (GuidPartitionEntry_t) * gpt_disk_data->entry_count;
+  	ptes = (GuidPartitionEntry_t*) ped_malloc (ptes_size);
+! 	if (!ped_device_read_large (disk->dev, ptes,
+  			      PED_LE64_TO_CPU(gpt->PartitionEntryLBA),
+  			      ptes_size / disk->dev->sector_size))
+  		goto error_free_ptes;

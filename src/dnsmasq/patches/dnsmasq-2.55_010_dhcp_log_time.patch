@@ -1,0 +1,193 @@
+diff -Naur dnsmasq-2.55-old/src/dnsmasq.h dnsmasq-2.55/src/dnsmasq.h
+--- dnsmasq-2.55-old/src/dnsmasq.h	2011-09-14 10:10:56.000000000 +0800
++++ dnsmasq-2.55/src/dnsmasq.h	2011-09-14 10:34:13.000000000 +0800
+@@ -722,7 +722,7 @@
+ 
+   /* TFTP stuff */
+   struct tftp_transfer *tftp_trans;
+-
++  int disable_dhcp_log;
+ } *daemon;
+ 
+ /* cache.c */
+diff -Naur dnsmasq-2.55-old/src/option.c dnsmasq-2.55/src/option.c
+--- dnsmasq-2.55-old/src/option.c	2011-09-14 10:10:56.000000000 +0800
++++ dnsmasq-2.55/src/option.c	2011-09-14 10:35:07.000000000 +0800
+@@ -108,6 +108,7 @@
+ #define LOPT_MAXTTL    297
+ #define LOPT_NO_REBIND 298
+ #define LOPT_LOC_REBND 299
++#define LOPT_DISABLE_DHCP_LOG 300
+ 
+ #ifdef HAVE_GETOPT_LONG
+ static const struct option opts[] =  
+@@ -221,6 +222,7 @@
+     { "dhcp-proxy", 2, 0, LOPT_PROXY },
+     { "dhcp-generate-names", 2, 0, LOPT_GEN_NAMES },
+     { "rebind-localhost-ok", 0, 0,  LOPT_LOC_REBND },
++	{ "disable_dhcp_log",1,0,LOPT_DISABLE_DHCP_LOG},
+     { NULL, 0, 0, 0 }
+   };
+ 
+@@ -341,6 +343,7 @@
+   { LOPT_PXE_PROMT, ARG_DUP, "<prompt>,[<timeout>]", gettext_noop("Prompt to send to PXE clients."), NULL },
+   { LOPT_PXE_SERV, ARG_DUP, "<service>", gettext_noop("Boot service for PXE menu."), NULL },
+   { LOPT_TEST, 0, NULL, gettext_noop("Check configuration syntax."), NULL },
++  { LOPT_DISABLE_DHCP_LOG, ARG_ONE, "1 or 0",gettext_noop("Disable or enbale dhcp log"), NULL},
+   { 0, 0, NULL, NULL, NULL }
+ }; 
+ 
+@@ -2703,7 +2706,12 @@
+ 	new->weight = weight;
+ 	break;
+       }
+-      
++	case LOPT_DISABLE_DHCP_LOG:
++		if(arg)
++		{
++			daemon->disable_dhcp_log = (arg[0] == '1')?1:0;
++		}
++	break;  
+     default:
+       return _("unsupported option (check that dnsmasq was compiled with DHCP/TFTP/DBus support)");
+ 
+diff -Naur dnsmasq-2.55-old/src/rfc2131.c dnsmasq-2.55/src/rfc2131.c
+--- dnsmasq-2.55-old/src/rfc2131.c	2011-09-14 10:10:56.000000000 +0800
++++ dnsmasq-2.55/src/rfc2131.c	2011-09-16 15:15:30.542783000 +0800
+@@ -127,7 +127,34 @@
+ static struct dhcp_opt *pxe_opts(int pxe_arch, struct dhcp_netid *netid, struct in_addr local);
+ struct dhcp_boot *find_boot(struct dhcp_netid *netid);
+ 
+-  
++#define TIMEZONE_FILE	"/etc/profile"
++static int dhcp_get_timezone(char *tz)
++{
++	int ret = -1;
++	FILE *file_tz = fopen(TIMEZONE_FILE,"r");
++	if(file_tz == NULL)
++	{
++		 return -1;
++	}
++
++	char line_buffer[512];
++	char *ptz;
++	while(fgets(line_buffer,sizeof(line_buffer),file_tz) != NULL)
++	{
++		ptz = strstr(line_buffer,"export setenv TZ=");
++		if(ptz != NULL)
++		{
++			ptz += (strlen("export setenv TZ=")+1);
++			sprintf(tz,"%.*s",strcspn(ptz,"\""),ptz);
++			ret = 0;
++			break;
++		}
++	}
++	fclose(file_tz);
++	return ret;
++
++}
++static char time_zone[128] = {0};
+ size_t dhcp_reply(struct dhcp_context *context, char *iface_name, int int_index,
+ 		  size_t sz, time_t now, int unicast_dest, int *is_inform, int pxe)
+ {
+@@ -165,7 +192,16 @@
+   iface_id.net = iface_name;
+   iface_id.next = NULL;
+   netid = &iface_id; 
+-  
++ 
++  char tz_info[128];
++  memset(tz_info,sizeof(tz_info),0);
++
++  if((dhcp_get_timezone(tz_info) == 0) && strcmp(tz_info,time_zone) != 0)
++  {
++	  strcpy(time_zone,tz_info);
++	  setenv("TZ",tz_info,1);
++	  tzset();
++  }
+   if (mess->op != BOOTREQUEST || mess->hlen > DHCP_CHADDR_MAX)
+     return 0;
+    
+@@ -987,7 +1023,7 @@
+       
+       if (!(opt = option_find(mess, sz, OPTION_REQUESTED_IP, INADDRSZ)))
+ 	return 0;
+-      
++      if(daemon->disable_dhcp_log != 1)
+       log_packet("DHCPDECLINE", option_ptr(opt, 0), emac, emac_len, iface_name, daemon->dhcp_buff, mess->xid);
+       
+       if (lease && lease->addr.s_addr == option_addr(opt).s_addr)
+@@ -1019,8 +1055,8 @@
+ 	lease_prune(lease, now);
+       else
+ 	message = _("unknown lease");
+-
+-      log_packet("DHCPRELEASE", &mess->ciaddr, emac, emac_len, iface_name, message, mess->xid);
++    if(daemon->disable_dhcp_log != 1) 
++	  log_packet("DHCPRELEASE", &mess->ciaddr, emac, emac_len, iface_name, message, mess->xid);
+ 	
+       return 0;
+       
+@@ -1083,12 +1119,12 @@
+ 	  else if (!address_allocate(context, &mess->yiaddr, emac, emac_len, tagif_netid, now))
+ 	    message = _("no address available");      
+ 	}
+-      
++	   if(daemon->disable_dhcp_log != 1)
+       log_packet("DHCPDISCOVER", opt ? option_ptr(opt, 0) : NULL, emac, emac_len, iface_name, message, mess->xid); 
+ 
+       if (message || !(context = narrow_context(context, mess->yiaddr, tagif_netid)))
+ 	return 0;
+-
++	   if(daemon->disable_dhcp_log != 1)
+       log_packet("DHCPOFFER" , &mess->yiaddr, emac, emac_len, iface_name, NULL, mess->xid);
+ 
+       if (context->netid.net)
+@@ -1188,7 +1224,7 @@
+ 	  fuzz = rand16();
+ 	  mess->yiaddr = mess->ciaddr;
+ 	}
+-      
++	   if(daemon->disable_dhcp_log != 1)
+       log_packet("DHCPREQUEST", &mess->yiaddr, emac, emac_len, iface_name, NULL, mess->xid);
+  
+       if (!message)
+@@ -1271,6 +1307,7 @@
+ 
+       if (message)
+ 	{
++	 if(daemon->disable_dhcp_log != 1)
+ 	  log_packet("DHCPNAK", &mess->yiaddr, emac, emac_len, iface_name, message, mess->xid);
+ 	  
+ 	  mess->yiaddr.s_addr = 0;
+@@ -1381,7 +1418,7 @@
+ 	    lease->override = override;
+ 	  else
+ 	    override = lease->override;
+-
++	   if(daemon->disable_dhcp_log != 1)
+ 	  log_packet("DHCPACK", &mess->yiaddr, emac, emac_len, iface_name, hostname, mess->xid);  
+ 	  
+ 	  clear_packet(mess, end);
+@@ -1404,8 +1441,8 @@
+     case DHCPINFORM:
+       if (ignore || have_config(config, CONFIG_DISABLE))
+ 	message = _("ignored");
+-      
+-      log_packet("DHCPINFORM", &mess->ciaddr, emac, emac_len, iface_name, message, mess->xid);
++       if(daemon->disable_dhcp_log != 1)
++	  log_packet("DHCPINFORM", &mess->ciaddr, emac, emac_len, iface_name, message, mess->xid);
+      
+       if (message || mess->ciaddr.s_addr == 0)
+ 	return 0;
+@@ -1422,8 +1459,8 @@
+       
+       if (!hostname && (hostname = host_from_dns(mess->ciaddr)))
+ 	domain = get_domain(mess->ciaddr);
+-
+-      log_packet("DHCPACK", &mess->ciaddr, emac, emac_len, iface_name, hostname, mess->xid);
++       if(daemon->disable_dhcp_log != 1)
++	  log_packet("DHCPACK", &mess->ciaddr, emac, emac_len, iface_name, hostname, mess->xid);
+       
+       if (context && context->netid.net)
+ 	{

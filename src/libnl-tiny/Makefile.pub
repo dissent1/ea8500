@@ -1,0 +1,6 @@
+ifndef EXPORT_ONLY
+	patch = /bin/true
+	extract = mkdir -p extracted/unused
+	configure = /bin/true
+	build = /bin/true
+endif

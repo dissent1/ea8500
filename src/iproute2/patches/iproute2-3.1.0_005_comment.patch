@@ -1,0 +1,17 @@
+diff -Nur iproute2-3.1.0.orig/tc/Makefile iproute2-3.1.0/tc/Makefile
+--- iproute2-3.1.0.orig/tc/Makefile	2011-11-17 16:53:00.000000000 -0800
++++ iproute2-3.1.0/tc/Makefile     	2011-11-17 16:53:00.000000000 -0800
+@@ -1,3 +1,5 @@
++# Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011
++# Nov 15 2011. Cisco Systems. Added a few more modules be compiled into tc
+ TCOBJ= tc.o tc_qdisc.o tc_class.o tc_filter.o tc_util.o \
+        tc_monitor.o m_police.o m_estimator.o m_action.o \
+        m_ematch.o emp_ematch.yacc.o emp_ematch.lex.o
+diff -Nur iproute2-3.1.0.orig/tc/q_wifi.c iproute2-3.1.0/tc/q_wifi.c
+--- iproute2-3.1.0.orig/tc/q_wifi.c	2011-11-30 14:01:53.000000000 -0800
++++ iproute2-3.1.0/tc/q_wifi.c     	2011-11-30 14:01:53.000000000 -0800
+@@ -1,3 +1,4 @@
++/* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+ /*
+  * q_wifi.c		wifi.
+  *

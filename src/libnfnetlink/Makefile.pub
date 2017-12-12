@@ -1,0 +1,7 @@
+
+NFNETLINK = $(wildcard $(pwd)/../libnfnetlink/extracted/*/include)
+
+ifndef EXPORT_ONLY
+	configure = ./configure --target=$(TC) --host=$(TC)
+	build = make
+endif

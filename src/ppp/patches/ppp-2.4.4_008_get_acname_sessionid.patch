@@ -1,0 +1,41 @@
+diff -Nur pppd-old/pppd/plugins/rp-pppoe/discovery.c pppd-new/pppd/plugins/rp-pppoe/discovery.c
+--- pppd-old/pppd/plugins/rp-pppoe/discovery.c	2012-02-07 18:35:27.000000000 +0800
++++ pppd-new/pppd/plugins/rp-pppoe/discovery.c	2012-02-13 14:12:00.093953000 +0800
+@@ -114,13 +114,17 @@
+     struct PacketCriteria *pc = (struct PacketCriteria *) extra;
+     PPPoEConnection *conn = pc->conn;
+     int i;
+-
++	char cmd[256];
++	memset(cmd,0,sizeof(cmd));
+     switch(type) {
+     case TAG_AC_NAME:
+ 	pc->seenACName = 1;
+ 	if (conn->printACNames) {
+ 	    printf("Access-Concentrator: %.*s\n", (int) len, data);
+ 	}
++	/*add by taliang@cisco.com @13/02 2012 for tr69*/
++	sprintf(cmd, "sysevent set wan_pppoe_acname %.*s",(int)len, data);
++	system(cmd);
+ 	if (conn->acName && len == strlen(conn->acName) &&
+ 	    !strncmp((char *) data, conn->acName, len)) {
+ 	    pc->acNameOK = 1;
+@@ -514,6 +518,8 @@
+     PPPoEPacket packet;
+     int len;
+ 
++	char cmd[256];
++	memset(cmd, 0, sizeof(cmd));
+     do {
+ 	if (BPF_BUFFER_IS_EMPTY) {
+ 	    tv.tv_sec = timeout;
+@@ -569,6 +575,9 @@
+ 
+     /* Don't bother with ntohs; we'll just end up converting it back... */
+     conn->session = packet.session;
++    /*add by taliang@cisco.com @13/02 2012 for tr69*/
++    sprintf(cmd, "sysevent set wan_pppoe_session_id %d",(int) ntohs(conn->session));
++    system(cmd);
+ 
+     syslog(LOG_INFO, "PPP session is %d", (int) ntohs(conn->session));
+ 

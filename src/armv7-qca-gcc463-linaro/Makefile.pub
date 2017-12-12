@@ -1,0 +1,12 @@
+TCDIR = armv7-qca-gcc463-linaro
+TCDIR2 = qsdk/staging_dir/toolchain-arm_v7-a_gcc-4.6-linaro_uClibc-0.9.33.2_eabi
+TC = arm-openwrt-linux-uclibcgnueabi
+ARCH=arm
+
+ifndef EXPORT_ONLY
+
+depends =
+configure = /bin/true
+build = /bin/true
+
+endif

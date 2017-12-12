@@ -1,0 +1,16 @@
+
+ifndef EXPORT_ONLY
+	configure = ./configure --target=$(TC) --host=$(TC) \
+		--disable-rpath \
+		--disable-asm \
+		--disable-gnupg-iconv \
+		--disable-card-support \
+		--disable-agent-support \
+		--disable-exec \
+		--disable-ldap \
+		--disable-hkp \
+		--disable-finger \
+		--disable-dns-srv \
+		--disable-regex
+	build = make 
+endif

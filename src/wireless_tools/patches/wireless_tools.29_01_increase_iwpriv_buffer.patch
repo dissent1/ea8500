@@ -1,0 +1,16 @@
+--- wireless_tools.29-org/iwpriv.c	2013-10-02 16:31:59.157232303 -0700
++++ wireless_tools.29/iwpriv.c	2013-10-02 16:32:23.585353436 -0700
+@@ -1,3 +1,4 @@
++/* Modifications were made by Linksys on or before Thu Oct  3 11:14:29 PDT 2013 */
+ /*
+  *     Wireless Tools
+  *
+@@ -259,7 +259,7 @@
+ 		int		priv_num)	/* Number of descriptions */
+ {
+   struct iwreq	wrq;
+-  u_char	buffer[4096];	/* Only that big in v25 and later */
++  u_char	buffer[40960];	/* Only that big in v25 and later */
+   int		i = 0;		/* Start with first command arg */
+   int		k;		/* Index in private description table */
+   int		temp;

@@ -1,0 +1,509 @@
+diff -c -r --exclude '*.o' --exclude Makefile --exclude .deps --exclude .libs quagga-0.99.16.orig/zebra/interface.c quagga-0.99.16.rtadv/zebra/interface.c
+*** quagga-0.99.16.orig/zebra/interface.c	2011-06-23 15:29:52.190203378 -0700
+--- quagga-0.99.16.rtadv/zebra/interface.c	2011-06-24 14:00:25.214454866 -0700
+***************
+*** 68,77 ****
+--- 68,81 ----
+      rtadv->AdvSendAdvertisements = 0;
+      rtadv->MaxRtrAdvInterval = RTADV_MAX_RTR_ADV_INTERVAL;
+      rtadv->MinRtrAdvInterval = RTADV_MIN_RTR_ADV_INTERVAL;
++     rtadv->AdvInitial = MAX_INITIAL_RTR_ADVERTISEMENTS;
++     rtadv->AdvLastSent.tv_sec = 0;
++     rtadv->AdvLastSent.tv_usec = 0;
+      rtadv->AdvIntervalTimer = 0;
+      rtadv->AdvManagedFlag = 0;
+      rtadv->AdvOtherConfigFlag = 0;
+      rtadv->AdvHomeAgentFlag = 0;
++     rtadv->AdvLinkMTUFlag = 0;
+      rtadv->AdvLinkMTU = 0;
+      rtadv->AdvReachableTime = 0;
+      rtadv->AdvRetransTimer = 0;
+diff -c -r --exclude '*.o' --exclude Makefile --exclude .deps --exclude .libs quagga-0.99.16.orig/zebra/interface.h quagga-0.99.16.rtadv/zebra/interface.h
+*** quagga-0.99.16.orig/zebra/interface.h	2011-06-23 15:29:52.190203378 -0700
+--- quagga-0.99.16.rtadv/zebra/interface.h	2011-06-24 13:51:28.978539670 -0700
+***************
+*** 72,80 ****
+--- 72,89 ----
+    int MinRtrAdvInterval;
+  #define RTADV_MIN_RTR_ADV_INTERVAL (0.33 * RTADV_MAX_RTR_ADV_INTERVAL)
+  
++   /* The number of initial RA's sent at MAX_INITIAL_RTR_ADVERT_INTERVAL
++      (16 sec) intervals on start.
++ 
++      Default: MAX_INITIAL_RTR_ADVERTISEMENTS (3) */
++   int AdvInitial;
++ 
+    /* Unsolicited Router Advertisements' interval timer. */
+    int AdvIntervalTimer;
+  
++   /* The last time we sent an RA */
++   struct timeval AdvLastSent;
++ 
+    /* The TRUE/FALSE value to be placed in the "Managed address
+       configuration" flag field in the Router Advertisement.  See
+       [ADDRCONF].
+***************
+*** 90,100 ****
+       Default: FALSE */
+    int AdvOtherConfigFlag;
+  
+!   /* The value to be placed in MTU options sent by the router.  A
+!      value of zero indicates that no MTU options are sent.
+  
+       Default: 0 */
+!   int AdvLinkMTU;
+  
+  
+    /* The value to be placed in the Reachable Time field in the Router
+--- 99,114 ----
+       Default: FALSE */
+    int AdvOtherConfigFlag;
+  
+!   /* The TRUE/FALSE value specifying if AdvLinkMTU has been set 
+!      and an MTU option should be in the advertizement.
+! 
+!      Default: FALSE */
+!   unsigned int AdvLinkMTUFlag;
+! 
+!   /* The value to be placed in MTU options sent by the router. 
+  
+       Default: 0 */
+!   unsigned int AdvLinkMTU;
+  
+  
+    /* The value to be placed in the Reachable Time field in the Router
+***************
+*** 112,118 ****
+       unspecified (by this router).
+  
+       Default: 0 */
+!   int AdvRetransTimer;
+  
+    /* The default value to be placed in the Cur Hop Limit field in the
+       Router Advertisement messages sent by the router.  The value
+--- 126,132 ----
+       unspecified (by this router).
+  
+       Default: 0 */
+!   unsigned int AdvRetransTimer;
+  
+    /* The default value to be placed in the Cur Hop Limit field in the
+       Router Advertisement messages sent by the router.  The value
+diff -c -r --exclude '*.o' --exclude Makefile --exclude .deps --exclude .libs quagga-0.99.16.orig/zebra/main.c quagga-0.99.16.rtadv/zebra/main.c
+*** quagga-0.99.16.orig/zebra/main.c	2009-12-09 04:37:12.000000000 -0800
+--- quagga-0.99.16.rtadv/zebra/main.c	2011-06-24 13:15:32.642555553 -0700
+***************
+*** 167,172 ****
+--- 167,173 ----
+  
+    if (!retain_mode)
+      rib_close ();
++   rtadv_finish ();
+  #ifdef HAVE_IRDP
+    irdp_finish();
+  #endif
+diff -c -r --exclude '*.o' --exclude Makefile --exclude .deps --exclude .libs quagga-0.99.16.orig/zebra/rtadv.c quagga-0.99.16.rtadv/zebra/rtadv.c
+*** quagga-0.99.16.orig/zebra/rtadv.c	2011-06-23 15:29:52.194203013 -0700
+--- quagga-0.99.16.rtadv/zebra/rtadv.c	2011-06-24 15:24:26.294762325 -0700
+***************
+*** 202,208 ****
+    rtadv->nd_ra_code = 0;
+    rtadv->nd_ra_cksum = 0;
+  
+!   rtadv->nd_ra_curhoplimit = 64;
+  
+    /* RFC4191: Default Router Preference is 0 if Router Lifetime is 0. */
+    rtadv->nd_ra_flags_reserved =
+--- 202,208 ----
+    rtadv->nd_ra_code = 0;
+    rtadv->nd_ra_cksum = 0;
+  
+!   rtadv->nd_ra_curhoplimit = zif->rtadv.AdvCurHopLimit;
+  
+    /* RFC4191: Default Router Preference is 0 if Router Lifetime is 0. */
+    rtadv->nd_ra_flags_reserved =
+***************
+*** 217,226 ****
+      rtadv->nd_ra_flags_reserved |= ND_RA_FLAG_HOME_AGENT;
+    rtadv->nd_ra_router_lifetime = htons (zif->rtadv.AdvDefaultLifetime);
+    rtadv->nd_ra_reachable = htonl (zif->rtadv.AdvReachableTime);
+!   rtadv->nd_ra_retransmit = htonl (0);
+  
+    len = sizeof (struct nd_router_advert);
+  
+    if (zif->rtadv.AdvHomeAgentFlag)
+      {
+        struct nd_opt_homeagent_info *ndopt_hai = 
+--- 217,237 ----
+      rtadv->nd_ra_flags_reserved |= ND_RA_FLAG_HOME_AGENT;
+    rtadv->nd_ra_router_lifetime = htons (zif->rtadv.AdvDefaultLifetime);
+    rtadv->nd_ra_reachable = htonl (zif->rtadv.AdvReachableTime);
+!   rtadv->nd_ra_retransmit = htonl (zif->rtadv.AdvRetransTimer);
+  
+    len = sizeof (struct nd_router_advert);
+  
++   if (zif->rtadv.AdvLinkMTUFlag == 1)
++     {
++       struct nd_opt_mtu *ndopt_mtu = 
++ 	(struct nd_opt_mtu *)(buf + len);
++       ndopt_mtu->nd_opt_mtu_type = ND_OPT_MTU;
++       ndopt_mtu->nd_opt_mtu_len = 1;
++       ndopt_mtu->nd_opt_mtu_reserved = 0;
++       ndopt_mtu->nd_opt_mtu_mtu = htonl(zif->rtadv.AdvLinkMTU);
++       len += sizeof(struct nd_opt_mtu);
++     }
++ 
+    if (zif->rtadv.AdvHomeAgentFlag)
+      {
+        struct nd_opt_homeagent_info *ndopt_hai = 
+***************
+*** 371,376 ****
+--- 382,388 ----
+        zlog_err ("rtadv_send_packet: sendmsg %d (%s)\n",
+  		errno, safe_strerror(errno));
+      }
++   gettimeofday(&zif->rtadv.AdvLastSent, NULL);
+  }
+  
+  static int
+***************
+*** 402,411 ****
+  
+        if (zif->rtadv.AdvSendAdvertisements)
+  	{ 
+  	  zif->rtadv.AdvIntervalTimer -= period;
+  	  if (zif->rtadv.AdvIntervalTimer <= 0)
+  	    {
+! 	      zif->rtadv.AdvIntervalTimer = zif->rtadv.MaxRtrAdvInterval;
+  	      rtadv_send_packet (rtadv->sock, ifp);
+  	    }
+  	}
+--- 414,434 ----
+  
+        if (zif->rtadv.AdvSendAdvertisements)
+  	{ 
++ 	    {
++ 	    }
+  	  zif->rtadv.AdvIntervalTimer -= period;
+  	  if (zif->rtadv.AdvIntervalTimer <= 0)
+  	    {
+! 	      if (zif->rtadv.AdvInitial > 0)
+! 	        {
+! 		  zlog_debug ("sending initial RA %d to %s", zif->rtadv.AdvInitial, ifp->name);
+! 		  zif->rtadv.AdvInitial--;
+! 		}
+! 
+! 	      zif->rtadv.AdvIntervalTimer = zif->rtadv.AdvInitial > 0
+! 	      		? MAX_INITIAL_RTR_ADVERT_INTERVAL * 1000
+! 			: zif->rtadv.MaxRtrAdvInterval;
+! 
+  	      rtadv_send_packet (rtadv->sock, ifp);
+  	    }
+  	}
+***************
+*** 428,438 ****
+  }
+  
+  static void
+! rtadv_process_packet (u_char *buf, unsigned int len, unsigned int ifindex, int hoplimit)
+  {
+    struct icmp6_hdr *icmph;
+    struct interface *ifp;
+    struct zebra_if *zif;
+  
+    /* Interface search. */
+    ifp = if_lookup_by_index (ifindex);
+--- 451,462 ----
+  }
+  
+  static void
+! rtadv_process_packet (u_char *buf, unsigned int len, unsigned int ifindex, int hoplimit, struct sockaddr_in6* from)
+  {
+    struct icmp6_hdr *icmph;
+    struct interface *ifp;
+    struct zebra_if *zif;
++   uint8_t* options;
+  
+    /* Interface search. */
+    ifp = if_lookup_by_index (ifindex);
+***************
+*** 450,455 ****
+--- 474,495 ----
+    if (! zif->rtadv.AdvSendAdvertisements)
+      return;
+  
++   if (zif->rtadv.AdvLastSent.tv_sec != 0 && zif->rtadv.AdvLastSent.tv_usec != 0)
++     {
++       struct timeval tv;
++       gettimeofday(&tv, NULL);
++       /* msec since last send */
++       int dt = (tv.tv_sec - zif->rtadv.AdvLastSent.tv_sec) * 1000
++       	+ (tv.tv_usec - zif->rtadv.AdvLastSent.tv_usec) / 1000;
++       if (dt < MIN_DELAY_BETWEEN_RAS * 1000)
++         {
++ 	  /* back off so as to not flood */
++ 	  zlog_debug ("delaying RA to %s for %d seconds", ifp->name, MIN_DELAY_BETWEEN_RAS);
++ 	  zif->rtadv.AdvIntervalTimer = MIN_DELAY_BETWEEN_RAS * 1000;
++ 	  return;
++ 	}
++     }
++ 
+    /* ICMP message length check. */
+    if (len < sizeof (struct icmp6_hdr))
+      {
+***************
+*** 460,469 ****
+    icmph = (struct icmp6_hdr *) buf;
+  
+    /* ICMP message type check. */
+!   if (icmph->icmp6_type != ND_ROUTER_SOLICIT &&
+!       icmph->icmp6_type != ND_ROUTER_ADVERT)
+      {
+!       zlog_warn ("Unwanted ICMPV6 message type: %d", icmph->icmp6_type);
+        return;
+      }
+  
+--- 500,512 ----
+    icmph = (struct icmp6_hdr *) buf;
+  
+    /* ICMP message type check. */
+!   if (icmph->icmp6_type == ND_ROUTER_SOLICIT && icmph->icmp6_code == 0)
+!     options = buf + sizeof (struct nd_router_solicit);
+!   else if (icmph->icmp6_type == ND_ROUTER_SOLICIT && icmph->icmp6_code == 0)
+!     options = buf + sizeof (struct nd_router_advert);
+!   else
+      {
+!       zlog_warn ("Unwanted ICMPV6 message type/code: %d/%d", icmph->icmp6_type, icmph->icmp6_code);
+        return;
+      }
+  
+***************
+*** 475,480 ****
+--- 518,555 ----
+        return;
+      }
+  
++   /* check options */
++   uint8_t* end = buf + len;
++   int source_opt = 0;
++   while (options < end)
++     {
++       if (end - options < 2)
++         {
++ 	  zlog_warn ("Invalid options: truncated option");
++ 	  return;
++ 	}
++       if (options[1] == 0)
++         {
++ 	  zlog_warn ("Invalid options: length == 0");
++ 	  return;
++ 	}
++       if (icmph->icmp6_type == ND_ROUTER_SOLICIT && options[0] == ND_OPT_SOURCE_LINKADDR)
++         {
++ 	  source_opt = 1;
++ 	}
++       options += 8 * options[1];
++     }
++   if (options != end)
++     {
++       zlog_warn ("Invalid options: truncated payload");
++       return;
++     }
++   if (source_opt && memcmp(&(from->sin6_addr), &in6addr_any, sizeof in6addr_any) == 0)
++     {
++       zlog_warn ("Invalid options: ND_OPT_SOURCE_LINKADDR with unspecified source address");
++       return;
++     }
++ 
+    /* Check ICMP message type. */
+    if (icmph->icmp6_type == ND_ROUTER_SOLICIT)
+      rtadv_process_solicit (ifp);
+***************
+*** 508,514 ****
+        return len;
+      }
+  
+!   rtadv_process_packet (buf, (unsigned)len, ifindex, hoplimit);
+  
+    return 0;
+  }
+--- 583,589 ----
+        return len;
+      }
+  
+!   rtadv_process_packet (buf, (unsigned)len, ifindex, hoplimit, &from);
+  
+    return 0;
+  }
+***************
+*** 1567,1572 ****
+--- 1642,1750 ----
+         "RDNSS Option\n"
+         "IPv6 address of recursive DNS server\n")
+  
++ DEFUN (ipv6_nd_hop_limit,
++        ipv6_nd_hop_limit_cmd,
++        "ipv6 nd hop-limit <0-255>",
++        "Interface IPv6 config commands\n"
++        "Neighbor discovery\n"
++        "Current hop limit\n")
++ {
++   int hop_limit;
++   struct interface *ifp;
++   struct zebra_if *zif;
++ 
++   ifp = (struct interface *) vty->index;
++   zif = ifp->info;
++ 
++   hop_limit = atoi (argv[0]);
++ 
++   if (hop_limit < 0 || hop_limit > 0xff)
++     {
++       vty_out (vty, "Invalid RA retransmit time%s", VTY_NEWLINE);
++       return CMD_WARNING;
++     }
++ 
++   zif->rtadv.AdvCurHopLimit = hop_limit;
++ 
++   return CMD_SUCCESS;
++ }
++ 
++ DEFUN (ipv6_nd_ra_retrans_time,
++        ipv6_nd_ra_retrans_time_cmd,
++        "ipv6 nd ra-retrans-time <0-4294967295>",
++        "Interface IPv6 config commands\n"
++        "Neighbor discovery\n"
++        "RA retransmit time\n")
++ {
++   unsigned int retrans_time; 
++   char* end;
++   struct interface *ifp;
++   struct zebra_if *zif;
++ 
++   ifp = (struct interface *) vty->index;
++   zif = ifp->info;
++ 
++   retrans_time = strtoul (argv[0], &end, 10);
++ 
++   if (*end != '\0')
++     {
++       vty_out (vty, "Invalid RA retransmit time%s", VTY_NEWLINE);
++       return CMD_WARNING;
++     }
++ 
++   zif->rtadv.AdvRetransTimer = retrans_time;
++ 
++   return CMD_SUCCESS;
++ }
++ 
++ DEFUN (ipv6_nd_link_mtu,
++        ipv6_nd_link_mtu_cmd,
++        "ipv6 nd link-mtu <0-4294967295>",
++        "Interface IPv6 config commands\n"
++        "Neighbor discovery\n"
++        "Link MTU\n")
++ {
++   unsigned int mtu;
++   char* end;
++   struct interface *ifp;
++   struct zebra_if *zif;
++ 
++   ifp = (struct interface *) vty->index;
++   zif = ifp->info;
++ 
++   mtu = strtoul (argv[0], &end, 10);
++ 
++   if (*end != '\0')
++     {
++       vty_out (vty, "Invalid Router MTU%s", VTY_NEWLINE);
++       return CMD_WARNING;
++     }
++ 
++   zif->rtadv.AdvLinkMTUFlag = 1;
++   zif->rtadv.AdvLinkMTU = mtu;
++ 
++   return CMD_SUCCESS;
++ }
++ 
++ DEFUN (no_ipv6_nd_link_mtu,
++        no_ipv6_nd_link_mtu_cmd,
++        "no ipv6 nd link-mtu",
++        NO_STR
++        "Interface IPv6 config commands\n"
++        "Neighbor discovery\n"
++        "Link MTU\n")
++ {
++   struct interface *ifp;
++   struct zebra_if *zif;
++ 
++   ifp = (struct interface *) vty->index;
++   zif = ifp->info;
++ 
++   zif->rtadv.AdvLinkMTUFlag = 0;
++ 
++   return CMD_SUCCESS;
++ }
++ 
+  
+  /* Write configuration about router advertisement. */
+  void
+***************
+*** 1745,1753 ****
+--- 1923,1960 ----
+    install_element (INTERFACE_NODE, &no_ipv6_nd_router_preference_cmd);
+    install_element (INTERFACE_NODE, &ipv6_nd_rdnss_cmd);
+    install_element (INTERFACE_NODE, &ipv6_nd_rdnss_cmd_nolife);
++   install_element (INTERFACE_NODE, &ipv6_nd_hop_limit_cmd);
++   install_element (INTERFACE_NODE, &ipv6_nd_ra_retrans_time_cmd);
++   install_element (INTERFACE_NODE, &ipv6_nd_link_mtu_cmd);
++   install_element (INTERFACE_NODE, &no_ipv6_nd_link_mtu_cmd);
+  
+  }
+  
++ void
++ rtadv_finish (void)
++ {
++   struct listnode *node, *nnode;
++   struct interface *ifp;
++   struct zebra_if *zif;
++ 
++ 
++   for (ALL_LIST_ELEMENTS (iflist, node, nnode, ifp))
++     {
++       if (if_is_loopback (ifp))
++ 	continue;
++ 
++       zif = ifp->info;
++       zif->rtadv.AdvIntervalTimer = 1000000;	/* disable timer */
++ 
++       if (zif->rtadv.AdvSendAdvertisements)
++ 	{
++ 	  zif->rtadv.AdvDefaultLifetime = 0;	/* says we're not playing anymore */
++ 	  zlog_debug ("sending final RA to %s", ifp->name);
++ 	  rtadv_send_packet (rtadv->sock, ifp);
++ 	}
++     }
++ }
++ 
+  static int
+  if_join_all_router (int sock, struct interface *ifp)
+  {
+diff -c -r --exclude '*.o' --exclude Makefile --exclude .deps --exclude .libs quagga-0.99.16.orig/zebra/rtadv.h quagga-0.99.16.rtadv/zebra/rtadv.h
+*** quagga-0.99.16.orig/zebra/rtadv.h	2011-06-23 15:29:52.194203013 -0700
+--- quagga-0.99.16.rtadv/zebra/rtadv.h	2011-06-24 14:10:13.650268391 -0700
+***************
+*** 26,31 ****
+--- 26,38 ----
+  #include "vty.h"
+  #include "zebra/interface.h"
+  
++ /* RFC4861 constants */
++ #define MAX_INITIAL_RTR_ADVERT_INTERVAL	16	/* seconds */
++ #define MAX_INITIAL_RTR_ADVERTISEMENTS	3	/* transmissions */
++ #define MAX_FINAL_RTR_ADVERTISEMENTS	3	/* transmissions */
++ #define MIN_DELAY_BETWEEN_RAS		3	/* seconds */
++ #define MAX_RA_DELAY_TIME		.5	/* seconds */
++ 
+  /* Router advertisement prefix. */
+  struct rtadv_prefix
+  {

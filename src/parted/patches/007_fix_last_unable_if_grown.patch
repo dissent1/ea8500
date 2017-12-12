@@ -1,0 +1,26 @@
+Imported from https://bugzilla.redhat.com/attachment.cgi?id=298091&action=diff&context=patch&collapsed=&headers=1&format=raw
+
+--- a/libparted/labels/gpt.c	2014-11-07 14:55:26.680138388 -0800
++++ b/libparted/labels/gpt.c	2014-11-07 14:55:28.750147437 -0800
+@@ -1,4 +1,5 @@
+-/* Modifications were made by Cisco Systems, Inc. on or before Mon Aug  6 16:52:21 PDT 2012 */
++/* Modifications were made by Cisco Systems, Inc. on or before Fri Nov  7 14:52:03 PST 2014
++ */
+ /*
+     libparted - a library for manipulating disk partitions
+ 
+@@ -669,11 +670,9 @@
+    parted invocation.
+ */
+    
+-	last_usable_if_grown 
+-		= PED_CPU_TO_LE64 (disk->dev->length - 2 - 
+-		((PedSector)(PED_LE32_TO_CPU(gpt->NumberOfPartitionEntries)) * 
+-		(PedSector)(PED_LE32_TO_CPU(gpt->SizeOfPartitionEntry)) / 
+-		disk->dev->sector_size));
++	last_usable_if_grown = disk->dev->length - 2 -
++		((gpt->NumberOfPartitionEntries * gpt->SizeOfPartitionEntry) /
++		disk->dev->sector_size);
+ 
+ 	last_usable_min_default = disk->dev->length - 2 - 
+ 		GPT_DEFAULT_PARTITION_ENTRY_ARRAY_SIZE / disk->dev->sector_size;

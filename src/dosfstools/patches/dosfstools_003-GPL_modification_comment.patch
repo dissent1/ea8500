@@ -1,0 +1,20 @@
+diff -Naur dosfstools-2.11.orig/dosfsck/Makefile dosfstools-2.11/dosfsck/Makefile
+--- dosfstools-2.11.orig/dosfsck/Makefile	2011-10-06 17:30:13.804332939 -0700
++++ dosfstools-2.11/dosfsck/Makefile	2011-10-06 17:33:13.624094921 -0700
+@@ -1,3 +1,6 @@
++#
++# Modifications were made by Cisco Systems, Inc. on May 9, 2011
++#
+ 
+ OBJECTS = boot.o check.o common.o dosfsck.o fat.o file.o io.o lfn.o
+ 
+diff -Naur dosfstools-2.11.orig/mkdosfs/Makefile dosfstools-2.11/mkdosfs/Makefile
+--- dosfstools-2.11.orig/mkdosfs/Makefile	2011-10-06 17:30:13.804332939 -0700
++++ dosfstools-2.11/mkdosfs/Makefile	2011-10-06 17:33:40.264055135 -0700
+@@ -1,3 +1,6 @@
++#
++#  Modifications were made by Cisco Systems, Inc. on May 9, 2011
++#
+ 
+ OBJECTS = mkdosfs.o
+ 

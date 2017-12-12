@@ -1,0 +1,17 @@
+
+ifndef EXPORT_ONLY
+	configure = /bin/true
+ifeq ($(toolchain_name),armv7-marvell-linux-gnueabi-softfp_i686)
+	build = make CC=$(CC) LD=$(LD) TOOLCHAIN_CFLAGS=-Wno-unused-but-set-variable
+else
+ifeq ($(toolchain_name),mips_r2_gcc-4.6-linaro)
+	build = make CC=$(CC) LD=$(LD) TOOLCHAIN_CFLAGS=-Wno-unused-but-set-variable
+else
+ifeq ($(toolchain_name),armv7-qca-gcc463-linaro)
+	build = make CC=$(CC) LD=$(LD) TOOLCHAIN_CFLAGS=-Wno-unused-but-set-variable
+else
+	build = make CC=$(CC)  LD=$(LD)
+endif
+endif
+endif
+endif

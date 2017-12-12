@@ -1,0 +1,5 @@
+
+ifndef EXPORT_ONLY
+	configure = /bin/true
+	build = make install
+endif

@@ -1,0 +1,22 @@
+--- linux/arch/arm/mach-msm/restart.c	2015-02-13 09:49:00.872969536 -0800
++++ linux-3.4.103/arch/arm/mach-msm/restart.c	2015-02-13 10:21:03.632878437 -0800
+@@ -48,6 +48,9 @@
+ 
+ #define SCM_IO_DISABLE_PMIC_ARBITER	1
+ 
++#ifdef CONFIG_MACH_LINKSYS_EA8500
++#define GPIO_IN_OUT(n) (MSM_TLMM_BASE + 0x1004 + (0x10 * n ))
++#endif
+ 
+ static int restart_mode;
+ void *restart_reason;
+@@ -249,6 +252,9 @@ void msm_restart(char mode, const char *
+ 	flush_cache_all();
+ #endif
+ 
++#ifdef CONFIG_MACH_LINKSYS_EA8500
++	__raw_writel(1 << 1, GPIO_IN_OUT(63));
++#endif        
+ 	__raw_writel(1, msm_tmr0_base + WDT0_RST);
+ 	__raw_writel(5*0x31F3, msm_tmr0_base + WDT0_BARK_TIME);
+ 	__raw_writel(0x31F3, msm_tmr0_base + WDT0_BITE_TIME);

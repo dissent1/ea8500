@@ -1,0 +1,15 @@
+--- acl-2.2.51/libacl/Makefile	2011-04-19 09:49:45.000000000 -0700
++++ acl-2.2.51.new/libacl/Makefile	2013-05-22 18:19:08.064160025 -0700
+@@ -16,8 +16,12 @@
+ # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ #
+ 
++# Modifications were made by Belkin International, Inc. on or before Wed May 22 19:10:28 PDT 2013
++
+ TOPDIR = ..
+ 
++CFLAGS += -I../../../depend/include
++
+ LTLDFLAGS += -Wl,--version-script,$(TOPDIR)/exports
+ include $(TOPDIR)/include/builddefs
+ 

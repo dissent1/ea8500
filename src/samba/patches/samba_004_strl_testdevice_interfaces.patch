@@ -1,0 +1,48 @@
+diff -Naur samba-3.0.28a/source/lib/interfaces.c samba-3.0.28b/source/lib/interfaces.c
+--- samba-3.0.28a/source/lib/interfaces.c	2008-03-08 23:33:34.000000000 +0800
++++ samba-3.0.28b/source/lib/interfaces.c	2011-08-26 11:00:45.569853000 +0800
+@@ -80,6 +80,8 @@
+ #include <net/if.h>
+ #endif
+ 
++#define VIPER
++
+ #include "interfaces.h"
+ 
+ #if HAVE_IFACE_IFCONF
+@@ -136,6 +138,11 @@
+ 			continue;
+ 		}
+ 
++#ifdef VIPER
++		if (0 == strcasecmp(iname, "eth1")) {
++			continue;
++		}
++#endif
+ 		if (ioctl(fd, SIOCGIFNETMASK, &ifr[i]) != 0) {
+ 			continue;
+ 		}  
+@@ -236,6 +243,11 @@
+ 			continue;
+ 		}
+ 
++#ifdef VIPER
++		if (0 == strcasecmp(iname, "eth1")) {
++			continue;
++		}
++#endif
+ 		nmask = ((struct sockaddr_in *)&ifreq.ifr_addr)->sin_addr;
+ 
+ 		strncpy(ifaces[total].name, iname, sizeof(ifaces[total].name)-1);
+@@ -307,6 +319,11 @@
+ 			goto next;
+ 		}
+ 
++#ifdef VIPER
++		if (0 == strcasecmp(iname, "eth1")) {
++			continue;
++		}
++#endif
+ 		if (ioctl(fd, SIOCGIFNETMASK, ifr) != 0) {
+ 			goto next;
+ 		}

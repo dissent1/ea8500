@@ -1,0 +1,37 @@
+/* Modifications were made by Linksys on or before Mon May 11 11:18:16 PDT 2015 */
+--- linux/arch/arm/kernel/setup.c	2015-05-09 17:40:12.823241542 -0700
++++ linux-3.4.103/arch/arm/kernel/setup.c	2015-05-09 17:45:12.817686837 -0700
+@@ -953,7 +953,33 @@ void __init setup_arch(char **cmdline_p)
+ 	init_mm.brk	   = (unsigned long) _end;
+ 
+ 	/* populate cmd_line too for later use, preserving boot_command_line */
++#ifdef CONFIG_MACH_LINKSYS_EA8500
++#ifdef CONFIG_MTD_UBI_BLOCK        
++	{
++		char *s = NULL, *cmd = boot_command_line;
++		
++		/* copy everything in command line, but replace root=31:xx */
++		while ( (s = strsep(&cmd," ") ) ) {
++			if ( strstr(s, "root=31:14") ) {
++	 		  strlcat(cmd_line,"ubi.mtd=14,2048 ubi.block=0,0 root=/dev/ubiblock0_0 rootwait ro",COMMAND_LINE_SIZE);
++		 	  strncat(cmd_line," ",1);
++			}else if (strstr(s, "root=31:16")) {
++	 		  strlcat(cmd_line,"ubi.mtd=16,2048 ubi.block=0,0 root=/dev/ubiblock0_0 rootwait ro",COMMAND_LINE_SIZE);
++		 	  strncat(cmd_line," ",1);
++			}
++			else
++			{
++		 	  strncat(cmd_line,s,strlen(s)); 
++		 	  strncat(cmd_line," ",1);
++			}
++
++		}
++		printk(KERN_NOTICE "EA8500 command line override: %s",cmd_line);
++	}
++#endif
++#else
+ 	strlcpy(cmd_line, boot_command_line, COMMAND_LINE_SIZE);
++#endif
+ 	*cmdline_p = cmd_line;
+ 
+ 	parse_early_param();

@@ -1,0 +1,54 @@
+diff -pur dnsmasq-2.55.orig/src/lease.c dnsmasq-2.55/src/lease.c
+--- dnsmasq-2.55.orig/src/lease.c	2010-10-18 16:51:58.000000000 -0700
++++ dnsmasq-2.55/src/lease.c	2010-10-18 16:52:58.000000000 -0700
+@@ -347,6 +347,28 @@ struct dhcp_lease *lease_allocate(struct
+   return lease;
+ }
+ 
++struct dhcp_lease *lease_allocate_for_static(struct in_addr addr)
++{
++  struct dhcp_lease *lease;
++  if (!(lease = whine_malloc(sizeof(struct dhcp_lease))))
++    return NULL;
++
++  memset(lease, 0, sizeof(struct dhcp_lease));
++  lease->new = 1;
++  lease->addr = addr;
++  lease->hwaddr_len = 256; /* illegal value */
++  lease->expires = 1;
++#ifdef HAVE_BROKEN_RTC
++  lease->length = 0xffffffff; /* illegal value */
++#endif
++  lease->next = leases;
++  leases = lease;
++
++  file_dirty = 1;
++
++  return lease;
++}
++
+ void lease_set_expires(struct dhcp_lease *lease, unsigned int len, time_t now)
+ {
+   time_t exp = now + (time_t)len;
+diff -pur dnsmasq-2.55.orig/src/rfc2131.c dnsmasq-2.55/src/rfc2131.c
+--- dnsmasq-2.55.orig/src/rfc2131.c	2010-10-18 16:51:58.000000000 -0700
++++ dnsmasq-2.55/src/rfc2131.c	2010-10-18 16:57:15.000000000 -0700
+@@ -1254,7 +1254,17 @@ size_t dhcp_reply(struct dhcp_context *c
+ 	      
+ 	      else if (!lease)
+ 		{	     
+-		  if ((lease = lease_allocate(mess->yiaddr)))
++          if (have_config(config, CONFIG_ADDR) && 
++              config->addr.s_addr == mess->yiaddr.s_addr) {
++            /*
++             * Addresses allocated by the --dhcp-host option are not
++             * constrained to be in the range given by the --dhcp-range option
++             */
++            lease = lease_allocate_for_static(mess->yiaddr);
++          } else {
++            lease = lease_allocate(mess->yiaddr);
++          }
++		  if (lease)
+ 		    do_classes = 1;
+ 		  else
+ 		    message = _("no leases left");

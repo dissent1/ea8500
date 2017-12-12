@@ -1,0 +1,13 @@
+diff -urp /home/yunyang/dnsmasq-2.55.orig/src/rfc2131.c dnsmasq-2.55.htspt-63/src/rfc2131.c
+--- /home/yunyang/dnsmasq-2.55.orig/src/rfc2131.c	2010-10-25 13:06:32.000000000 -0700
++++ dnsmasq-2.55.htspt-63/src/rfc2131.c	2010-10-25 13:06:54.000000000 -0700
+@@ -214,9 +214,6 @@ size_t dhcp_reply(struct dhcp_context *c
+          break;
+ 
+       case DHCPRELEASE:
+-         if (0 != mess->secs) {
+-            return (-1);
+-         }
+          if (0 != ntohs(mess->flags)) {
+             return (-1);
+          }

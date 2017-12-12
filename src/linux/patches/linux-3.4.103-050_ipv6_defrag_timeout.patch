@@ -1,0 +1,34 @@
+diff -Naur linux-orig/net/ipv6/netfilter/nf_conntrack_reasm.c linux-new/net/ipv6/netfilter/nf_conntrack_reasm.c
+--- linux-orig/net/ipv6/netfilter/nf_conntrack_reasm.c	2013-09-10 16:26:29.299374163 +0800
++++ linux-new/net/ipv6/netfilter/nf_conntrack_reasm.c	2013-09-10 16:48:48.803382010 +0800
+@@ -1,3 +1,4 @@
++/* Modifications were made by Cisco Systems, Inc. on or before Tues Sep 6 00:58:52 PST 2013 */
+ /*
+  * IPv6 fragment reassembly for connection tracking
+  *
+@@ -313,7 +314,7 @@
+ 
+ 	/* Check for overlap with preceding fragment. */
+ 	if (prev &&
+-	    (NFCT_FRAG6_CB(prev)->offset + prev->len) > offset)
++	    (NFCT_FRAG6_CB(prev)->offset + (int)prev->len) > offset)
+ 		goto discard_fq;
+ 
+ 	/* Look for overlap with succeeding segment. */
+diff -Naur linux-orig/net/ipv6/reassembly.c linux-new/net/ipv6/reassembly.c
+--- linux-orig/net/ipv6/reassembly.c	2013-09-10 16:26:29.319374164 +0800
++++ linux-new/net/ipv6/reassembly.c	2013-09-10 16:43:26.535380122 +0800
+@@ -1,3 +1,4 @@
++/* Modifications were made by Cisco Systems, Inc. on or before Tues Sep 6 00:58:52 PST 2013 */
+ /*
+  *	IPv6 fragment reassembly
+  *	Linux INET6 implementation
+@@ -346,7 +347,7 @@
+ 
+ 	/* Check for overlap with preceding fragment. */
+ 	if (prev &&
+-	    (FRAG6_CB(prev)->offset + prev->len) > offset)
++	    (FRAG6_CB(prev)->offset + (int)prev->len) > offset)
+ 		goto discard_fq;
+ 
+ 	/* Look for overlap with succeeding segment. */

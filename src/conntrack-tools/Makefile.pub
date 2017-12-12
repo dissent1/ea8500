@@ -1,0 +1,9 @@
+
+ifndef EXPORT_ONLY
+	depends = libnfnetlink libnetfilter_conntrack
+	configure = \
+		LIBNFNETLINK_CFLAGS=-I$(NFNETLINK) LIBNFNETLINK_LIBS="-L$(NFNETLINK)/../src/.libs -lnfnetlink" \
+		LIBNETFILTER_CONNTRACK_CFLAGS=-I$(LIBNETFILTER_CONNTRACK) LIBNETFILTER_CONNTRACK_LIBS="-L$(LIBNETFILTER_CONNTRACK)/../src/.libs -L$(NFNETLINK)/../src/.libs -lnetfilter_conntrack -lnfnetlink" \
+		./configure --target=$(TC) --host=$(TC)
+	build = make
+endif

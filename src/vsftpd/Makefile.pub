@@ -1,0 +1,8 @@
+
+ifndef EXPORT_ONLY
+	depends = libiconv openssl
+	patch = mkdir -p include && (cd ../../../libiconv/extracted/*/lib && tar cf - ascii.h big5.h big5hkscs.h converters.h cp1258.h cp936ext.h flushwc.h gb18030ext.h gb18030uni.h gb18030.h gb2312.h gbkext1.h gbkext2.h gbkext_inv.h gbk.h hkscs.h utf8.h vietcomb.h iso8859_1.h) | tar xf - -C include && for n in ../../patches/*.patch; do patch -p$(patchlevel) < $$n; done > ../../.patchlog
+	configure = /bin/true
+	build = /bin/true
+#	build = make CC="$(CC) -I$(OPENSSL) -Iinclude" LIBS="-L$(OPENSSL)/.. -lcrypt -lcrypto -lssl -ldl -lnsl -lresolv -lutil"
+endif

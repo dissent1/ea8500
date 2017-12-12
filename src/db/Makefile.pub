@@ -1,0 +1,7 @@
+
+DB = $(wildcard $(pwd)/../db/extracted/*/build_unix)
+
+ifndef EXPORT_ONLY
+	configure = cd build_unix && ../dist/configure --host=$(TC) CC=$(CC) LD=$(LD) CXX=$(CXX) --enable-compat185
+	build = make -C build_unix
+endif

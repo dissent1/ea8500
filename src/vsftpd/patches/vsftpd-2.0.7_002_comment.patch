@@ -1,0 +1,301 @@
+diff -rc vsftpd-2.0.7.orig/builddefs.h vsftpd-2.0.7/builddefs.h
+*** vsftpd-2.0.7.orig/builddefs.h	2011-11-30 14:02:03.000000000 -0800
+--- vsftpd-2.0.7/builddefs.h	2011-11-30 14:44:07.106411319 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  #ifndef VSF_BUILDDEFS_H
+  #define VSF_BUILDDEFS_H
+  
+diff -rc vsftpd-2.0.7.orig/include/include/ascii.h vsftpd-2.0.7/include/include/ascii.h
+*** vsftpd-2.0.7.orig/include/include/ascii.h	2011-11-30 14:02:03.000000000 -0800
+--- vsftpd-2.0.7/include/include/ascii.h	2011-11-30 14:44:07.378357634 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  /*
+   * Copyright (C) 1999-2001 Free Software Foundation, Inc.
+   * This file is part of the GNU LIBICONV Library.
+diff -rc vsftpd-2.0.7.orig/include/include/big5.h vsftpd-2.0.7/include/include/big5.h
+*** vsftpd-2.0.7.orig/include/include/big5.h	2011-11-30 14:02:03.000000000 -0800
+--- vsftpd-2.0.7/include/include/big5.h	2011-11-30 14:44:07.406411018 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  /*
+   * Copyright (C) 1999-2001 Free Software Foundation, Inc.
+   * This file is part of the GNU LIBICONV Library.
+diff -rc vsftpd-2.0.7.orig/include/include/big5hkscs.h vsftpd-2.0.7/include/include/big5hkscs.h
+*** vsftpd-2.0.7.orig/include/include/big5hkscs.h	2011-11-30 14:02:03.000000000 -0800
+--- vsftpd-2.0.7/include/include/big5hkscs.h	2011-11-30 14:44:07.414355185 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  /*
+   * Copyright (C) 1999-2001 Free Software Foundation, Inc.
+   * This file is part of the GNU LIBICONV Library.
+diff -rc vsftpd-2.0.7.orig/include/include/converters.h vsftpd-2.0.7/include/include/converters.h
+*** vsftpd-2.0.7.orig/include/include/converters.h	2011-11-30 14:02:03.000000000 -0800
+--- vsftpd-2.0.7/include/include/converters.h	2011-11-30 14:44:07.418354891 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  /*
+   * Copyright (C) 1999-2002 Free Software Foundation, Inc.
+   * This file is part of the GNU LIBICONV Library.
+diff -rc vsftpd-2.0.7.orig/include/include/cp1258.h vsftpd-2.0.7/include/include/cp1258.h
+*** vsftpd-2.0.7.orig/include/include/cp1258.h	2011-11-30 14:02:03.000000000 -0800
+--- vsftpd-2.0.7/include/include/cp1258.h	2011-11-30 14:44:07.426355268 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  /*
+   * Copyright (C) 1999-2001 Free Software Foundation, Inc.
+   * This file is part of the GNU LIBICONV Library.
+diff -rc vsftpd-2.0.7.orig/include/include/cp936ext.h vsftpd-2.0.7/include/include/cp936ext.h
+*** vsftpd-2.0.7.orig/include/include/cp936ext.h	2011-11-30 14:02:03.000000000 -0800
+--- vsftpd-2.0.7/include/include/cp936ext.h	2011-11-30 14:44:07.430357179 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  /*
+   * Copyright (C) 1999-2001 Free Software Foundation, Inc.
+   * This file is part of the GNU LIBICONV Library.
+diff -rc vsftpd-2.0.7.orig/include/include/flushwc.h vsftpd-2.0.7/include/include/flushwc.h
+*** vsftpd-2.0.7.orig/include/include/flushwc.h	2011-11-30 14:02:03.000000000 -0800
+--- vsftpd-2.0.7/include/include/flushwc.h	2011-11-30 14:44:07.434355199 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  /*
+   * Copyright (C) 2001 Free Software Foundation, Inc.
+   * This file is part of the GNU LIBICONV Library.
+diff -rc vsftpd-2.0.7.orig/include/include/gb18030ext.h vsftpd-2.0.7/include/include/gb18030ext.h
+*** vsftpd-2.0.7.orig/include/include/gb18030ext.h	2011-11-30 14:02:03.000000000 -0800
+--- vsftpd-2.0.7/include/include/gb18030ext.h	2011-11-30 14:44:07.442354508 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  /*
+   * Copyright (C) 1999-2001 Free Software Foundation, Inc.
+   * This file is part of the GNU LIBICONV Library.
+diff -rc vsftpd-2.0.7.orig/include/include/gb18030.h vsftpd-2.0.7/include/include/gb18030.h
+*** vsftpd-2.0.7.orig/include/include/gb18030.h	2011-11-30 14:02:03.000000000 -0800
+--- vsftpd-2.0.7/include/include/gb18030.h	2011-11-30 14:44:07.446354771 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  /*
+   * Copyright (C) 1999-2001 Free Software Foundation, Inc.
+   * This file is part of the GNU LIBICONV Library.
+diff -rc vsftpd-2.0.7.orig/include/include/gb18030uni.h vsftpd-2.0.7/include/include/gb18030uni.h
+*** vsftpd-2.0.7.orig/include/include/gb18030uni.h	2011-11-30 14:02:03.000000000 -0800
+--- vsftpd-2.0.7/include/include/gb18030uni.h	2011-11-30 14:44:07.454355040 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  /*
+   * Copyright (C) 1999-2001 Free Software Foundation, Inc.
+   * This file is part of the GNU LIBICONV Library.
+diff -rc vsftpd-2.0.7.orig/include/include/gb2312.h vsftpd-2.0.7/include/include/gb2312.h
+*** vsftpd-2.0.7.orig/include/include/gb2312.h	2011-11-30 14:02:03.000000000 -0800
+--- vsftpd-2.0.7/include/include/gb2312.h	2011-11-30 14:44:07.462401854 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  /*
+   * Copyright (C) 1999-2001 Free Software Foundation, Inc.
+   * This file is part of the GNU LIBICONV Library.
+diff -rc vsftpd-2.0.7.orig/include/include/gbkext1.h vsftpd-2.0.7/include/include/gbkext1.h
+*** vsftpd-2.0.7.orig/include/include/gbkext1.h	2011-11-30 14:02:03.000000000 -0800
+--- vsftpd-2.0.7/include/include/gbkext1.h	2011-11-30 14:44:07.470355257 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  /*
+   * Copyright (C) 1999-2000 Free Software Foundation, Inc.
+   * This file is part of the GNU LIBICONV Library.
+diff -rc vsftpd-2.0.7.orig/include/include/gbkext2.h vsftpd-2.0.7/include/include/gbkext2.h
+*** vsftpd-2.0.7.orig/include/include/gbkext2.h	2011-11-30 14:02:03.000000000 -0800
+--- vsftpd-2.0.7/include/include/gbkext2.h	2011-11-30 14:44:07.478396004 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  /*
+   * Copyright (C) 1999-2000 Free Software Foundation, Inc.
+   * This file is part of the GNU LIBICONV Library.
+diff -rc vsftpd-2.0.7.orig/include/include/gbkext_inv.h vsftpd-2.0.7/include/include/gbkext_inv.h
+*** vsftpd-2.0.7.orig/include/include/gbkext_inv.h	2011-11-30 14:02:03.000000000 -0800
+--- vsftpd-2.0.7/include/include/gbkext_inv.h	2011-11-30 14:44:07.486393246 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  /*
+   * Copyright (C) 1999-2001 Free Software Foundation, Inc.
+   * This file is part of the GNU LIBICONV Library.
+diff -rc vsftpd-2.0.7.orig/include/include/gbk.h vsftpd-2.0.7/include/include/gbk.h
+*** vsftpd-2.0.7.orig/include/include/gbk.h	2011-11-30 14:02:03.000000000 -0800
+--- vsftpd-2.0.7/include/include/gbk.h	2011-11-30 14:44:07.490354351 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  /*
+   * Copyright (C) 1999-2001 Free Software Foundation, Inc.
+   * This file is part of the GNU LIBICONV Library.
+diff -rc vsftpd-2.0.7.orig/include/include/hkscs.h vsftpd-2.0.7/include/include/hkscs.h
+*** vsftpd-2.0.7.orig/include/include/hkscs.h	2011-11-30 14:02:03.000000000 -0800
+--- vsftpd-2.0.7/include/include/hkscs.h	2011-11-30 14:44:07.502397479 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  /*
+   * Copyright (C) 1999-2002 Free Software Foundation, Inc.
+   * This file is part of the GNU LIBICONV Library.
+diff -rc vsftpd-2.0.7.orig/include/include/iso8859_1.h vsftpd-2.0.7/include/include/iso8859_1.h
+*** vsftpd-2.0.7.orig/include/include/iso8859_1.h	2011-11-30 14:02:03.000000000 -0800
+--- vsftpd-2.0.7/include/include/iso8859_1.h	2011-11-30 14:44:07.506354837 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  /*
+   * Copyright (C) 1999-2001 Free Software Foundation, Inc.
+   * This file is part of the GNU LIBICONV Library.
+diff -rc vsftpd-2.0.7.orig/include/include/utf8.h vsftpd-2.0.7/include/include/utf8.h
+*** vsftpd-2.0.7.orig/include/include/utf8.h	2011-11-30 14:02:03.000000000 -0800
+--- vsftpd-2.0.7/include/include/utf8.h	2011-11-30 14:44:07.514355088 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  /*
+   * Copyright (C) 1999-2001 Free Software Foundation, Inc.
+   * This file is part of the GNU LIBICONV Library.
+diff -rc vsftpd-2.0.7.orig/include/include/vietcomb.h vsftpd-2.0.7/include/include/vietcomb.h
+*** vsftpd-2.0.7.orig/include/include/vietcomb.h	2011-11-30 14:02:03.000000000 -0800
+--- vsftpd-2.0.7/include/include/vietcomb.h	2011-11-30 14:44:07.518384028 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  /*
+   * Copyright (C) 2001 Free Software Foundation, Inc.
+   * This file is part of the GNU LIBICONV Library.
+diff -rc vsftpd-2.0.7.orig/Makefile vsftpd-2.0.7/Makefile
+*** vsftpd-2.0.7.orig/Makefile	2011-11-30 14:02:03.000000000 -0800
+--- vsftpd-2.0.7/Makefile	2011-11-30 14:44:07.094357683 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ # Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011
+  # Makefile for systems with GNU tools
+  CC 	?=	gcc
+  INSTALL	?=	install
+diff -rc vsftpd-2.0.7.orig/mod_codeconv.c vsftpd-2.0.7/mod_codeconv.c
+*** vsftpd-2.0.7.orig/mod_codeconv.c	2011-11-30 14:02:03.000000000 -0800
+--- vsftpd-2.0.7/mod_codeconv.c	2011-11-30 14:44:07.122411597 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  /*
+   * ProFTPD: mod_codeconv -- local <-> remote charset conversion
+   *
+diff -rc vsftpd-2.0.7.orig/parseconf.c vsftpd-2.0.7/parseconf.c
+*** vsftpd-2.0.7.orig/parseconf.c	2011-11-30 14:02:03.000000000 -0800
+--- vsftpd-2.0.7/parseconf.c	2011-11-30 14:44:07.138416673 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  /*
+   * Part of Very Secure FTPd
+   * Licence: GPL v2
+diff -rc vsftpd-2.0.7.orig/postlogin.c vsftpd-2.0.7/postlogin.c
+*** vsftpd-2.0.7.orig/postlogin.c	2011-11-30 14:02:03.000000000 -0800
+--- vsftpd-2.0.7/postlogin.c	2011-11-30 14:44:07.162412898 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  /*
+   * Part of Very Secure FTPd
+   * Licence: GPL v2
+diff -rc vsftpd-2.0.7.orig/readwrite.c vsftpd-2.0.7/readwrite.c
+*** vsftpd-2.0.7.orig/readwrite.c	2011-11-30 14:02:03.000000000 -0800
+--- vsftpd-2.0.7/readwrite.c	2011-11-30 14:44:07.174357623 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  /*
+   * Part of Very Secure FTPd
+   * Licence: GPL v2
+diff -rc vsftpd-2.0.7.orig/readwrite.h vsftpd-2.0.7/readwrite.h
+*** vsftpd-2.0.7.orig/readwrite.h	2011-11-30 14:02:03.000000000 -0800
+--- vsftpd-2.0.7/readwrite.h	2011-11-30 14:44:07.190411863 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  #ifndef VSF_READWRITE_H
+  #define VSF_READWRITE_H
+  
+diff -rc vsftpd-2.0.7.orig/sysdeputil.c vsftpd-2.0.7/sysdeputil.c
+*** vsftpd-2.0.7.orig/sysdeputil.c	2011-11-30 14:02:03.000000000 -0800
+--- vsftpd-2.0.7/sysdeputil.c	2011-11-30 14:44:07.078386479 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  /*
+   * Part of Very Secure FTPd
+   * Licence: GPL v2
+diff -rc vsftpd-2.0.7.orig/tunables.c vsftpd-2.0.7/tunables.c
+*** vsftpd-2.0.7.orig/tunables.c	2011-11-30 14:02:03.000000000 -0800
+--- vsftpd-2.0.7/tunables.c	2011-11-30 14:44:07.202357513 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  /*
+   * Part of Very Secure FTPd
+   * Licence: GPL v2
+diff -rc vsftpd-2.0.7.orig/tunables.h vsftpd-2.0.7/tunables.h
+*** vsftpd-2.0.7.orig/tunables.h	2011-11-30 14:02:03.000000000 -0800
+--- vsftpd-2.0.7/tunables.h	2011-11-30 14:44:07.218413243 -0800
+***************
+*** 1,3 ****
+--- 1,4 ----
++ /* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
+  #ifndef VSF_TUNABLES_H
+  #define VSF_TUNABLES_H
+  
+diff -rc vsftpd-2.0.7.orig/vsf_findlibs.sh vsftpd-2.0.7/vsf_findlibs.sh
+*** vsftpd-2.0.7.orig/vsf_findlibs.sh	2011-11-30 14:02:03.000000000 -0800
+--- vsftpd-2.0.7/vsf_findlibs.sh	2011-11-30 14:44:07.230415204 -0800
+***************
+*** 1,4 ****
+--- 1,5 ----
+  #!/bin/sh
++ # Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011
+  # Cheesy hacky location of additional link libraries.
+  
+  locate_library() { [ ! "$1*" = "`echo $1*`" ]; }

@@ -1,0 +1,10 @@
+
+ifndef EXPORT_ONLY
+	depends = db
+	configure = /bin/true
+ifeq ($(toolchain_name),armv7-marvell-linux-gnueabi-softfp_64k)
+	build = make CC=$(CC) LD=$(LD) TOOLCHAIN_CFLAGS="-DHAVE_SETNS" LDFLAGS="-rdynamic -L$(DB)" KERNEL_INCLUDE=$(LINUX) DBM_INCLUDE=$(DB)
+else
+	build = make CC=$(CC) LD=$(LD) LDFLAGS="-rdynamic -L$(DB)" KERNEL_INCLUDE=$(LINUX) DBM_INCLUDE=$(DB)
+endif
+endif

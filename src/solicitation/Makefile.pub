@@ -1,0 +1,6 @@
+
+ifndef EXPORT_ONLY
+	extract = mkdir -p extracted/unused
+	configure = /bin/true
+	build = cd ../.. && $(CC) -D_GNU_SOURCE *.c
+endif

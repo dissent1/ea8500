@@ -1,0 +1,134 @@
+diff -Nur ppp.orig/pppd/main.c ppp.new/pppd/main.c
+--- ppp.orig/pppd/main.c	2011-09-27 15:00:48.904985651 -0700
++++ ppp.new/pppd/main.c	2011-09-27 15:34:31.565235809 -0700
+@@ -66,6 +66,13 @@
+  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+  */
+ 
++/*
++ * enright@cisco.com 09/2011
++ * When l2tp/udp packets are read in, they are put onto a pty for pppd to read
++ * but the pty is a stream device and so the pppd code has to figure out message
++ * boundaries in the case where l2tp added more than one packet before pppd
++ * received and read them in from the pty
++ */
+ #define RCSID	"$Id: main.c,v 1.153 2006/06/04 03:52:50 paulus Exp $"
+ 
+ #include <stdio.h>
+@@ -1016,6 +1023,22 @@
+ }
+ 
+ /*
++ * Use the length field of a packet to determine its length
++ * added by enrightcisco.com 09/2001
++ */
++static int
++extract_pkt_length(u_char *p)
++{
++   int pkt_len;
++
++   pkt_len  = 0;
++   pkt_len |= p[6] & 0xFF;
++   pkt_len <<= 8;
++   pkt_len |= p[7] & 0xFF;
++   return(pkt_len);
++}
++
++/*
+  * get_input - called when incoming data is available.
+  */
+ static void
+@@ -1025,8 +1048,12 @@
+     u_char *p;
+     u_short protocol;
+     struct protent *protp;
++    int pkt_len;
++    int remaining_len;
++    u_char *inpacket_buf_p;
+ 
+     p = inpacket_buf;	/* point to beginning of packet buffer */
++    inpacket_buf_p = inpacket_buf;	/* point to beginning of packet buffer */
+ 
+     len = read_packet(inpacket_buf);
+     if (len < 0)
+@@ -1051,6 +1078,21 @@
+ 	return;
+     }
+ 
++   /* 
++    * enright@cisco.com 09/2011
++    * it is possible that inpacket_buf contains more than one packet. 
++    * We need to split it into packets 
++    */
++   remaining_len = len;
++   pkt_len = extract_pkt_length(p) + PPP_HDRLEN; /* PPP_HDRLEN adds unaccounted for ppp header */
++   if (pkt_len > remaining_len) {
++      pkt_len = remaining_len;
++   }
++
++while (0 < remaining_len) {
++
++    len = pkt_len; 
++
+     dump_packet("rcvd", p, len);
+     if (snoop_recv_hook) snoop_recv_hook(p, len);
+ 
+@@ -1063,7 +1105,7 @@
+      */
+     if (protocol != PPP_LCP && lcp_fsm[0].state != OPENED) {
+ 	dbglog("Discarded non-LCP packet when LCP not open");
+-	return;
++	goto next_loop;
+     }
+ 
+     /*
+@@ -1076,7 +1118,7 @@
+ 		protocol == PPP_EAP)) {
+ 	dbglog("discarding proto 0x%x in phase %d",
+ 		   protocol, phase);
+-	return;
++	goto next_loop;
+     }
+ 
+     /*
+@@ -1085,12 +1127,12 @@
+     for (i = 0; (protp = protocols[i]) != NULL; ++i) {
+ 	if (protp->protocol == protocol && protp->enabled_flag) {
+ 	    (*protp->input)(0, p, len);
+-	    return;
++	    goto next_loop;
+ 	}
+         if (protocol == (protp->protocol & ~0x8000) && protp->enabled_flag
+ 	    && protp->datainput != NULL) {
+ 	    (*protp->datainput)(0, p, len);
+-	    return;
++	    goto next_loop;
+ 	}
+     }
+ 
+@@ -1102,6 +1144,25 @@
+ 	    warn("Unsupported protocol 0x%x received", protocol);
+     }
+     lcp_sprotrej(0, p - PPP_HDRLEN, len + PPP_HDRLEN);
++
++next_loop:
++   /*
++    * enright@cisco.com 09/2011
++    * if there are still bytes left in the read buffer
++    * then advance the pointers and work on the next
++    * message in the buffer
++    */
++   remaining_len -= pkt_len;
++   if (0 < remaining_len) {
++      inpacket_buf_p += pkt_len;
++      p = inpacket_buf_p;
++      pkt_len = extract_pkt_length(p) + PPP_HDRLEN;
++      if (pkt_len > remaining_len) {
++         pkt_len = remaining_len;
++      }
++   }
++
++   } /* while */  
+ }
+ 
+ /*

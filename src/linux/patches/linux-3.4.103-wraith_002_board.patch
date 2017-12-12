@@ -1,0 +1,105 @@
+--- linux/arch/arm/mach-msm/board-ipq806x-gpiomux.c	2015-02-09 10:14:59.140870867 -0800
++++ linux-3.4.103/arch/arm/mach-msm/board-ipq806x-gpiomux.c	2015-02-09 13:48:36.073866298 -0800
+@@ -546,10 +546,12 @@ static struct msm_gpiomux_config ipq806x
+ 	ipq_mux(19, gsbi5_spi_data_cfg,			gsbi5_spi_data_cfg),
+ 	ipq_mux(20, gsbi5_spi_cs_cfg,			gsbi5_spi_cs_cfg),
+ 	ipq_mux(21, gsbi5_spi_clk_cfg,			gsbi5_spi_clk_cfg),
++#ifndef CONFIG_MACH_LINKSYS_EA8500
+ 	ipq_mux(22, gsbi2_active_cfg,			gsbi2_suspended_cfg),
+ 	ipq_mux(23, gsbi2_active_cfg,			gsbi2_suspended_cfg),
+ 	ipq_mux(24, gsbi2_active_cfg,			gsbi2_suspended_cfg),
+ 	ipq_mux(25, gsbi2_active_cfg,			gsbi2_suspended_cfg),
++#endif        
+ 	ipq_mux(26, ipq806x_leds_cfg,			ipq806x_leds_cfg),
+ 	ipq_mux(27, nss_gmac1_rgmii_set,		nss_gmac1_rgmii_set),
+ 	ipq_mux(28, nss_gmac1_rgmii_set,		nss_gmac1_rgmii_set),
+--- linux/arch/arm/mach-msm/board-ipq806x.c	2015-02-09 10:14:59.144870867 -0800
++++ linux-3.4.103/arch/arm/mach-msm/board-ipq806x.c	2015-02-09 14:55:41.765675562 -0800
+@@ -1928,6 +1928,27 @@ static void __init ipq806x_i2c_init(void
+ 	ipq806x_device_qup_i2c_gsbi2.dev.platform_data =
+ 					&ipq806x_i2c_qup_gsbi2_pdata;
+ }
++#ifdef CONFIG_MACH_LINKSYS_EA8500
++static struct gpio_led ap148_gpio_leds[] = {
++	{
++		.name       = "pwr",
++		.gpio       = 6,
++		.active_low = 1,
++		.default_trigger= "heartbeat",
++	},
++	{
++		.name       = "wps",
++		.gpio       = 53,
++		.active_low = 0,
++	},
++	{
++		.name       = "wifi",
++		.gpio       = 54,
++		.active_low = 0,
++	},
++};
++#else
++
+ 
+ static struct gpio_led ap148_gpio_leds[] = {
+ 	{
+@@ -1956,7 +1977,7 @@ static struct gpio_led ap148_gpio_leds[]
+ 		.active_low = 0,
+ 	},
+ };
+-
++#endif
+ static struct gpio_led_platform_data gpio_led_ap148_pdata = {
+ 	.leds		= ap148_gpio_leds,
+ 	.num_leds	= ARRAY_SIZE(ap148_gpio_leds),
+@@ -2056,12 +2077,27 @@ static struct platform_device ap145_kp_p
+ 	},
+ };
+ #define AP148_GPIO_BTN_JUMPSTART	65
++#ifdef CONFIG_MACH_LINKSYS_EA8500
++#define AP148_GPIO_BTN_RFKILL		67
++#define AP148_GPIO_BTN_RESET		68
++#else
+ #define AP148_GPIO_BTN_RESET		54
+-
++#endif
+ #define AP148_KEYS_POLL_INTERVAL	20	/* msecs */
+ #define AP148_KEYS_DEBOUNCE_INTERVAL	(3 * AP148_KEYS_POLL_INTERVAL)
+ 
+ static struct gpio_keys_button ap148_gpio_keys[] = {
++#ifdef CONFIG_MACH_LINKSYS_EA8500
++        {
++		.desc		= "rf_kill",
++		.type		= EV_KEY,
++		.code		= BTN_9, /* code set to button 9 so we don't need to patch hotplug unnecessarily */
++		.debounce_interval = AP148_KEYS_DEBOUNCE_INTERVAL,
++		.gpio		= AP148_GPIO_BTN_RFKILL,
++		.wakeup		= 1,
++		.active_low	= 1,
++	},
++#endif        
+ 	{
+ 		.desc		= "wps",
+ 		.type		= EV_KEY,
+@@ -2085,6 +2121,9 @@ static struct gpio_keys_button ap148_gpi
+ static struct gpio_keys_platform_data ap148_keys_data = {
+ 	.buttons        = ap148_gpio_keys,
+ 	.nbuttons       = ARRAY_SIZE(ap148_gpio_keys),
++#ifdef CONFIG_MACH_LINKSYS_EA8500
++        .rep            = 1,
++#endif        
+ };
+ 
+ static struct platform_device ap148_kp_pdev = {
+@@ -2737,7 +2776,11 @@ MACHINE_START(IPQ806X_DB147, "Qualcomm A
+ 	.restart = msm_restart,
+ MACHINE_END
+ 
++#ifdef CONFIG_MACH_LINKSYS_EA8500
++MACHINE_START(IPQ806X_AP148, "Linksys EA8500 WiFi Router.")
++#else
+ MACHINE_START(IPQ806X_AP148, "Qualcomm Atheros AP148 reference board")
++#endif
+ 	.map_io = ipq806x_map_io,
+ 	.reserve = ipq806x_reserve,
+ 	.init_irq = ipq806x_init_irq,

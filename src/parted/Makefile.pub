@@ -1,0 +1,6 @@
+
+ifndef EXPORT_ONLY
+	depends = libuuid
+	configure = CFLAGS="-I$(LIBUUID)" LDFLAGS="-L$(LIBUUID)" ./configure --target=$(TC) --host=$(TC) --prefix= --without-readline --without-included-regex --without-libintl-prefix --disable-device-mapper
+	build = make
+endif

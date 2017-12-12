@@ -1,0 +1,173 @@
+diff -Naur igmpproxy-0.1_orig/src/config.c igmpproxy-0.1/src/config.c
+--- igmpproxy-0.1_orig/src/config.c	2014-06-10 10:57:23.109638679 -0700
++++ igmpproxy-0.1/src/config.c	2014-06-10 15:14:03.906582699 -0700
+@@ -47,6 +47,9 @@
+ 
+     // Keep allowed nets for VIF.
+     struct SubnetList*  allowednets;
++
++    // Disallowed Groups
++    struct SubnetList*  disallowedgroups;
+     
+     // Next config in list...
+     struct vifconfig*   next;
+@@ -202,7 +205,7 @@
+                         
+                     // Insert the configured nets...
+                     vifLast->next = confPtr->allowednets;
+-
++                    Dp->disallowedgroups = confPtr->disallowedgroups;
+                     break;
+                 }
+             }
+@@ -216,7 +219,7 @@
+ */
+ struct vifconfig *parsePhyintToken() {
+     struct vifconfig  *tmpPtr;
+-    struct SubnetList **anetPtr;
++    struct SubnetList **anetPtr, **agrpPtr;
+     char *token;
+     short parseError = 0;
+ 
+@@ -240,6 +243,7 @@
+     tmpPtr->threshold = 1;
+     tmpPtr->state = IF_STATE_DISABLED; // Fixed  Virtul If issue, Sridhar Ramaswamy, Cisco Systems, Inc. 2010-10-12
+     tmpPtr->allowednets = NULL;
++    tmpPtr->disallowedgroups = NULL;
+ 
+     // Make a copy of the token to store the IF name
+     tmpPtr->name = strdup( token );
+@@ -249,6 +253,7 @@
+ 
+     // Set the altnet pointer to the allowednets pointer.
+     anetPtr = &tmpPtr->allowednets;
++    agrpPtr = &tmpPtr->disallowedgroups;
+ 
+     // Parse the rest of the config..
+     token = nextConfigToken();
+@@ -267,6 +272,20 @@
+                 anetPtr = &(*anetPtr)->next;
+             }
+         }
++        else if(strcmp("blacklist", token)==0) {
++            // Blacklist...
++            token = nextConfigToken();
++            my_log(LOG_DEBUG, 0, "Config: IF: Got blacklist token %s.",token);
++   
++            *agrpPtr = parseSubnetAddress(token);
++            if(*agrpPtr == NULL) {
++                parseError = 1;
++                my_log(LOG_WARNING, 0, "Unable to parse subnet address.");
++                break;
++            } else {
++                agrpPtr = &(*agrpPtr)->next;
++            }
++        }
+         else if(strcmp("upstream", token)==0) {
+             // Upstream
+             my_log(LOG_DEBUG, 0, "Config: IF: Got upstream token.");
+diff -Naur igmpproxy-0.1_orig/src/igmpproxy.h igmpproxy-0.1/src/igmpproxy.h
+--- igmpproxy-0.1_orig/src/igmpproxy.h	2014-06-10 10:57:23.117638734 -0700
++++ igmpproxy-0.1/src/igmpproxy.h	2014-06-10 15:14:33.718730489 -0700
+@@ -1,3 +1,4 @@
++/* Modifications were made by Linksys on or before Wed Jun 11 15:31:45 PDT 2014 */
+ /*
+ **  igmpproxy - IGMP proxy based multicast router
+ **  Copyright (C) 2005 Johnny Egeland <johnny@rlo.org>
+@@ -145,6 +146,7 @@
+     short               Flags;
+     short               state;
+     struct SubnetList*  allowednets;
++    struct SubnetList*  disallowedgroups;
+     unsigned int        robustness;
+     unsigned char       threshold;   /* ttl limit */
+     unsigned int        ratelimit; 
+diff -Naur igmpproxy-0.1_orig/src/request.c igmpproxy-0.1/src/request.c
+--- igmpproxy-0.1_orig/src/request.c	2014-06-10 10:57:23.117638734 -0700
++++ igmpproxy-0.1/src/request.c	2014-06-10 15:26:39.762330788 -0700
+@@ -1,3 +1,4 @@
++/* Modifications were made by Linksys on or before Wed Jun 11 15:32:12 PDT 2014 */
+ /*
+ **  igmpproxy - IGMP proxy based multicast router
+ **  Copyright (C) 2005 Johnny Egeland <johnny@rlo.org>
+@@ -82,14 +83,26 @@
+         my_log(LOG_DEBUG, 0, "Should insert group %s (from: %s) to route table. Vif Ix : %d",
+             inetFmt(group,s1), inetFmt(src,s2), sourceVif->index);
+ 
++        // If we don't have a blacklist we insertRoute and done
++        if (sourceVif->disallowedgroups == NULL) {
++            // The membership report was OK... Insert it into the route table..
++            insertRoute(group, sourceVif->index);
++            return;
++        }
++        // Check if this Request is legit on this interface
++        struct SubnetList *sn;
++        for (sn = sourceVif->disallowedgroups; sn != NULL; sn = sn->next) {
++            if ((group & sn->subnet_mask) == sn->subnet_addr) {
++                my_log(LOG_INFO, 0, "The group address %s may not be requested from this interface. Ignoring.", inetFmt(group, s1));
++                return;
++            }
++        }
+         // The membership report was OK... Insert it into the route table..
+         insertRoute(group, sourceVif->index);
+-
+-
+     } else {
+         // Log the state of the interface the report was recieved on.
+         my_log(LOG_INFO, 0, "Mebership report was recieved on %s. Ignoring.",
+-            sourceVif->state==IF_STATE_UPSTREAM?"the upstream interface":"a disabled interface");
++        sourceVif->state==IF_STATE_UPSTREAM?"the upstream interface":"a disabled interface");
+     }
+ 
+ }
+diff -Naur igmpproxy-0.1_orig/src/rttable.c igmpproxy-0.1/src/rttable.c
+--- igmpproxy-0.1_orig/src/rttable.c	2014-06-10 10:57:23.001638156 -0700
++++ igmpproxy-0.1/src/rttable.c	2014-06-10 15:31:44.991843650 -0700
+@@ -118,6 +118,20 @@
+         my_log(LOG_ERR, 0 ,"FATAL: Unable to get Upstream IF.");
+     }
+ 
++    // Check if there is a black list for the upstram VIF
++    if (upstrIf->disallowedgroups != NULL) {
++        uint32_t group = route->group;
++        struct SubnetList* sn;
++
++        // Check if this Request is legit to be forwarded to upstream
++        for (sn = upstrIf->disallowedgroups; sn != NULL; sn = sn->next) {
++            if ((group & sn->subnet_mask) == sn->subnet_addr) {
++                my_log(LOG_INFO, 0, "The group address %s may not be forwarded upstream. Ignoring.", inetFmt(group, s1));
++                return;
++            }
++        }
++    }
++
+     // Send join or leave request...
+     if(join) {
+
+--- igmpproxy-0.1_orig/src/igmp.c  2014-06-11 15:15:40.094387638 -0700
++++ igmpproxy-0.1/src/igmp.c  2014-06-12 11:17:46.299590458 -0700
+@@ -150,10 +150,21 @@
+                     inetFmt(src, s1));
+                 return;
+             }
+-
++            my_log(LOG_DEBUG, 0, "Route activate request from %s to %s", inetFmt(src,s1), inetFmt(dst,s2));
++            checkVIF = getIfByAddress(src); 
++            if (!checkVIF || checkVIF->state == IF_STATE_UPSTREAM) {
++                checkVIF = getIfByIx(upStreamVif);
++                if (checkVIF && checkVIF->disallowedgroups != NULL) {
++                    struct SubnetList* sn;
++                    for (sn = checkVIF->disallowedgroups; sn != NULL; sn = sn->next) {
++                        if ((dst & sn->subnet_mask) == sn->subnet_addr) {
++                            my_log(LOG_NOTICE, 0, "Route activate request from %s to %s, from upstream to a group on the black list. Ignoring.", inetFmt(src, s1), inetFmt(dst, s2));
++                            return;
++                        }
++                    }
++                }
++            }
+             // Activate the route.
+-            my_log(LOG_DEBUG, 0, "Route activate request from %s to %s",
+-		    inetFmt(src,s1), inetFmt(dst,s2));
+             activateRoute(dst, src);
+             
+

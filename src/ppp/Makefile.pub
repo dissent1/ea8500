@@ -1,0 +1,5 @@
+
+ifndef EXPORT_ONLY
+	configure = ./configure
+	build = CC="$(CC)" AR="$(AR)" RANLIB="$(RANLIB)" LDFLAGS="$(LDFLAGS)" CFLAGS="$(CFLAGS)" HAVE_INET6=y TOOLCHAIN_ROOT=$(TOOLCHAIN_PATH)/..  TOOLCHAIN_LIBC_PREFIX=$(TC)/libc/usr make
+endif

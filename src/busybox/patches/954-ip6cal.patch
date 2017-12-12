@@ -1,0 +1,245 @@
+--- a/networking/Config.src	2014-09-10 14:55:04.904588875 -0700
++++ b/networking/Config.src	2014-09-10 13:36:26.540514939 -0700
+@@ -612,6 +612,13 @@ config FEATURE_IPCALC_LONG_OPTIONS
+ 	help
+ 	  Support long options for the ipcalc applet.
+ 
++config IP6CALC
++	bool "ip6calc"
++	default n
++	help
++	  ip6calc takes an IPv6 address and prefix and calculates the
++	  resulting network, and host range and other values.
++
+ config NETMSG
+ 	bool "netmsg"
+ 	default n
+--- a/networking/ip6calc.c	1969-12-31 16:00:00.000000000 -0800
++++ b/networking/ip6calc.c	2014-09-10 13:15:22.100495125 -0700
+@@ -0,0 +1,215 @@
++/* Modifications were made by Cisco Systems, Inc. on or before Wed Nov 30 13:28:05 PST 2011 */
++/* vi: set sw=4 ts=4: */
++/*
++ * Mini ip6calc implementation for busybox
++ *
++ * Based on idea from Jordan Crouse <jordan@cosmicpenguin.net>
++ *    Stephan Linz  <linz@li-pro.net>
++ *
++ * Ported to IPv6 by
++ *    Eric Vyncke <evyncke@cisco.com>
++ *
++ * Licensed under GPLv2 or later, see file LICENSE in this tarball for details.
++ */
++
++#include <getopt.h>
++#include <sys/socket.h>
++#include <netinet/in.h>
++#include <arpa/inet.h>
++
++#include "libbb.h"
++
++/* The below order must respect the order of the getopt32 parameter */
++
++#define NETMASK   0x001
++#define HOST      0x002
++#define PREFIX    0x004
++#define HOSTNAME  0x008
++#define AND       0x010
++#define OR        0x020
++#define XOR       0x040
++#define LSHIFT    0x080
++#define RSHIFT    0x100
++#define IPV4	  0x200
++#define SIXTO4	  0x400
++
++static const char ip6calc_longopts[] ALIGN1 =
++"netmask\0"   No_argument "m"
++"host\0"      No_argument "h"
++"prefix\0"    No_argument "p"
++"hostname\0"  No_argument "n"
++"and\0"		  No_argument "a"
++"or\0"        No_argument "o"
++"xor\0"       No_argument "x"
++"left-shift\0"     No_argument "l"  /* Should probably have an argument EVY */
++"right-shift\0"     No_argument "r"  /* Should probably have an argument EVY */
++"ipv4\0"	  No_argument "4"
++"6to4\0"	  No_argument "6"
++;
++
++int ip6calc_main(int argc, char **argv) MAIN_EXTERNALLY_VISIBLE;
++int ip6calc_main(int argc, char **argv)
++{
++	unsigned opt;
++	int have_netmask = 0, i;
++	unsigned int shift_value;
++	struct in6_addr netmask, network, tmpaddr, ipaddr;
++	struct in6_addr a,b;
++	struct in_addr ipv4;
++	char *ipstr;
++    char tmpbuf[INET6_ADDRSTRLEN+1] ;
++	unsigned long netprefix = 0;
++	char *prefixstr;
++
++	opt = getopt32(argv, "mhpnaoxlr46");
++	argc -= optind;
++	argv += optind;
++	
++	if (opt & (NETMASK | PREFIX | HOST | HOSTNAME | IPV4 | SIXTO4)) {
++		if (argc != 1)
++			bb_show_usage();
++	} else {
++		if (argc != 2)
++			bb_show_usage();
++	}
++
++	if (opt & (RSHIFT | LSHIFT)) {
++		shift_value = xatoul_range(argv[1], 0, 128);
++	}
++
++	ipstr = argv[0];
++
++	prefixstr = ipstr;
++	while (*prefixstr) {
++		if (*prefixstr == '/') {
++			*prefixstr = (char)0;
++			prefixstr++;
++			if (*prefixstr) {
++				netprefix = xatoul_range(prefixstr, 0, 128);
++				memset(&netmask,0, sizeof(struct in6_addr)) ;
++				i=0 ;
++				while (netprefix > 7) {
++					netmask.s6_addr[i++]=0xFF ;
++					netprefix-=8;
++				}
++				if (netprefix > 0 & i <= 15)
++					netmask.s6_addr[i]= ~ (0xFF >> netprefix) ;
++
++				/* Even if it was 0, we will signify that we have a netmask. This allows */
++				/* for specification of default routes, etc which have a 0 netmask/prefix */
++				have_netmask = 1;
++			}
++			break;
++		}
++		prefixstr++;
++	}
++	if (opt & (SIXTO4 | IPV4)) {
++		if (inet_pton(AF_INET, argv[0], &ipv4) <= 0) 
++			bb_error_msg_and_die("bad IPv4 address: %s", argv[0]);
++	} else
++		if (inet_pton(AF_INET6, argv[0], &a) <= 0) 
++			bb_error_msg_and_die("bad IPv6 address: %s", argv[0]);
++
++	/* Is there a 2nd IPv6 address on the CLI? */ 
++	if (opt & (AND | OR | XOR)) {
++		if (argc != 2)
++			bb_show_usage() ;
++		if (inet_pton(AF_INET6, argv[1], &b) <= 0)
++			bb_error_msg_and_die("bad IPv6 address: %s", argv[1]);
++	} 
++
++	memcpy(&ipaddr,&a,sizeof(struct in6_addr));
++
++	if (opt & (NETMASK | HOST | PREFIX))
++		if (have_netmask == 0)
++			bb_error_msg_and_die("/PREFIX is required for this option") ;
++
++	if (opt & NETMASK) {
++		printf("NETMASK=%s\n", inet_ntop(AF_INET6,&netmask,tmpbuf,INET6_ADDRSTRLEN+1));
++	}
++
++	if (opt & HOST) {
++		for (i=0;i<16;i++)
++			network.s6_addr[i]=ipaddr.s6_addr[i] & ( ~ netmask.s6_addr[i]) ;
++		printf("HOST=%s\n", inet_ntop(AF_INET6,&network,tmpbuf,INET6_ADDRSTRLEN+1));
++	}
++
++	if (opt & PREFIX) {
++		for (i=0;i<16;i++)
++			network.s6_addr[i]=ipaddr.s6_addr[i] & netmask.s6_addr[i] ;
++		printf("PREFIX=%s\n", inet_ntop(AF_INET6,&network,tmpbuf,INET6_ADDRSTRLEN+1));
++	}
++
++	if (opt & AND) {
++		for (i=0;i<16;i++)
++			tmpaddr.s6_addr[i]=a.s6_addr[i] & b.s6_addr[i] ;
++		printf("AND=%s\n", inet_ntop(AF_INET6,&tmpaddr,tmpbuf,INET6_ADDRSTRLEN+1));
++	}
++
++	if (opt & OR) {
++		for (i=0;i<16;i++)
++			tmpaddr.s6_addr[i]=a.s6_addr[i] | b.s6_addr[i] ;
++		printf("OR=%s\n", inet_ntop(AF_INET6,&tmpaddr,tmpbuf,INET6_ADDRSTRLEN+1));
++	}
++
++	if (opt & XOR) {
++		for (i=0;i<16;i++)
++			tmpaddr.s6_addr[i]=a.s6_addr[i] ^ b.s6_addr[i] ;
++		printf("XOR=%s\n", inet_ntop(AF_INET6,&tmpaddr,tmpbuf,INET6_ADDRSTRLEN+1));
++	}
++
++	if (opt & IPV4) {
++		memset(&tmpaddr,0,sizeof(tmpaddr)) ;
++		tmpaddr.s6_addr32[3]=ipv4.s_addr ;
++		printf("IPv4_MAPPED=%s\n", inet_ntop(AF_INET6,&tmpaddr,tmpbuf,INET6_ADDRSTRLEN+1));
++	}
++
++	if (opt & SIXTO4) {
++		memset(&tmpaddr,0,sizeof(tmpaddr)) ;
++		tmpaddr.s6_addr16[0]=htons(0x2002) ;
++		tmpaddr.s6_addr16[1]=((unsigned short *) &ipv4.s_addr) [0];
++		tmpaddr.s6_addr16[2]=((unsigned short *) &ipv4.s_addr) [1];
++		printf("SIXTOFOUR=%s\n", inet_ntop(AF_INET6,&tmpaddr,tmpbuf,INET6_ADDRSTRLEN+1));
++	}
++
++	if (opt & (RSHIFT | LSHIFT)) {
++		unsigned char byte_shift, bit_shift, b1, b2 ;
++		memset(&tmpaddr,0,sizeof(tmpaddr)) ;
++		byte_shift = shift_value / 8 ;
++		bit_shift = shift_value % 8 ;
++		if (opt & LSHIFT)
++			for (i=0; i < 16; i++) {
++				if (i-byte_shift >= 0 ) {
++					b1 = a.s6_addr[i] << bit_shift ;
++					b2 = (i < 15) ?  a.s6_addr[i+1] >> (8 - bit_shift) : 0 ;
++					tmpaddr.s6_addr[i-byte_shift]= b1 | b2 ;
++				}
++			}
++		else 
++			for (i=15; i >= 0; i--) {
++				if (i+byte_shift <= 15 ) {
++					b1 = a.s6_addr[i] >> bit_shift ;
++					b2 = (i >= 1) ?  a.s6_addr[i-1] << (8 - bit_shift) : 0 ;
++					tmpaddr.s6_addr[i+byte_shift]= b1 | b2 ;
++				}
++			}
++		printf("SHIFT=%s\n", inet_ntop(AF_INET6,&tmpaddr,tmpbuf,INET6_ADDRSTRLEN+1));
++	}
++
++	if (opt & HOSTNAME) {
++			struct hostent *hostinfo;
++			int x;
++
++			hostinfo = gethostbyaddr((char *) &ipaddr, sizeof(ipaddr), AF_INET6);
++			if (!hostinfo) {
++				bb_herror_msg_and_die("cannot find hostname for %s", argv[0]);
++			}
++			for (x = 0; hostinfo->h_name[x]; x++) {
++				hostinfo->h_name[x] = tolower(hostinfo->h_name[x]);
++			}
++
++			printf("HOSTNAME=%s\n", hostinfo->h_name);
++		}
++
++		return EXIT_SUCCESS;
++	}
+--- a/networking/Kbuild.src	2014-09-10 14:55:04.904588875 -0700
++++ b/networking/Kbuild.src	2014-09-10 13:42:15.028520400 -0700
+@@ -25,6 +25,7 @@ lib-$(CONFIG_IFUPDOWN)     += ifupdown.o
+ lib-$(CONFIG_INETD)        += inetd.o
+ lib-$(CONFIG_IP)           += ip.o
+ lib-$(CONFIG_IPCALC)       += ipcalc.o
++lib-$(CONFIG_IP6CALC)      += ip6calc.o
+ lib-$(CONFIG_NAMEIF)       += nameif.o
+ lib-$(CONFIG_NC)           += nc.o
+ lib-$(CONFIG_NETMSG)       += netmsg.o
+

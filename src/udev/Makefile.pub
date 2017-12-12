@@ -1,0 +1,5 @@
+
+ifndef EXPORT_ONLY
+	configure = ./configure --target=$(TC) --host=$(TC) --disable-logging
+	build = make
+endif

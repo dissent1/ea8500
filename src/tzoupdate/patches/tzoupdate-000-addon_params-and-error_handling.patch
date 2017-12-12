@@ -1,0 +1,605 @@
+Only in tzoupdate-1.12: .built
+Only in tzoupdate-1.12: .configured
+Only in tzoupdate-1.12: .extracted
+Only in tzoupdate-1.12: .installed
+Only in tzoupdate-1.12: .patched
+Only in tzoupdate-1.12: tzoupdate
+diff -crB /home/mchekhan/Downloads/tzoupdate-1.12/tzoupdate.c tzoupdate-1.12/tzoupdate.c
+*** /home/mchekhan/Downloads/tzoupdate-1.12/tzoupdate.c	2008-10-27 07:55:37.000000000 -0700
+--- tzoupdate-1.12/tzoupdate.c	2011-07-20 17:02:22.918285113 -0700
+***************
+*** 59,66 ****
+  	long Ptr ;
+  	} MEMSTRUCT ;
+  	
+! unsigned char TzoUpdateServerName[64] = {"rh.tzo.com"} ;
+! unsigned char TzoEchoServerName[64] = {"echo.tzo.com"} ;
+  int DefaultHttpPort = 80 ;
+  
+  /*
+--- 59,66 ----
+  	long Ptr ;
+  	} MEMSTRUCT ;
+  	
+! char TzoUpdateServerName[64] = "rh.tzo.com" ;
+! char TzoEchoServerName[64] = "echo.tzo.com" ;
+  int DefaultHttpPort = 80 ;
+  
+  /*
+***************
+*** 88,93 ****
+--- 89,95 ----
+  int Verbose = 0 ;
+  
+  #define SIZEOF_IP_ADDR 32
++ char szWANIpAddress[SIZEOF_IP_ADDR] ="";
+  
+  int MemRelease(MEMSTRUCT * lpMemBlock) {
+  	if (lpMemBlock->lpMem)
+***************
+*** 583,594 ****
+  
+  int ReadIPAddressFromFile(char *filename, char *szIpAddress) {
+  	int hFile ;
+! 	szIpAddress[0] = 0 ;
+  
+! 	if ((hFile = open(filename, O_RDWR, 0640)) < 0)
+      	return 0 ;
+  
+! 	read(hFile, szIpAddress, SIZEOF_IP_ADDR) ;
+  
+  	close(hFile) ;
+  	return (1) ;
+--- 585,617 ----
+  
+  int ReadIPAddressFromFile(char *filename, char *szIpAddress) {
+  	int hFile ;
+! 	ssize_t nRead=0; 
+! 	ssize_t TotalRead=0;
+! 	char* pos = szIpAddress;
+! 
+! 	memset (szIpAddress, 0, SIZEOF_IP_ADDR);
+  
+! 	if ((hFile = open(filename, O_RDONLY, (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH))) < 0)
+      	return 0 ;
+  
+! 	while( (0 < (nRead = read(hFile, pos, SIZEOF_IP_ADDR)))
+! 	      && (TotalRead < SIZEOF_IP_ADDR) )
+! 	{
+! 	   /* feel the buffer until EOF or buffer is full */
+! 	   TotalRead += nRead;
+! 	   pos += nRead;
+! 	}
+! 	
+! 	if (nRead < 0 )
+! 	{
+!    	printf("* Failed (%d) to read file :<%s>\n", errno, filename) ;
+!    	close(hFile) ;
+!    	return 0;
+! 	}
+! 	
+! 	if (Verbose)
+! 	   printf("* Read (%d) last IP Address in file :<%s>\n", TotalRead, szIpAddress) ;
+!    
+  
+  	close(hFile) ;
+  	return (1) ;
+***************
+*** 597,602 ****
+--- 620,626 ----
+  
+  int WriteIPAddressFromFile(char *filename, unsigned char *szIpAddress) {
+  	int hFile ;
++ 	
+  
+  	if ((hFile = open(filename, O_RDWR | O_CREAT | O_TRUNC, 0640)) < 0)
+      	return 0 ;
+***************
+*** 612,630 ****
+  	int hFile, start, nCnt ;
+  	char ConfigFileData[MAX_MESSAGE_SIZE] ;
+  	char ts[200] ;
+  
+  
+  /*	if ((hFile = open(filename, O_RDWR, 0640)) < 0) { */
+  /* sgp 7/17, make open read-only */
+  	 if ((hFile = open(filename, O_RDONLY, 0640)) < 0) {
+! 		printf("TZO ERROR : Cannot open %s\n\n", filename) ;
+! 		return EXIT_FATAL ;
+  	}
+  
+  	if ((nCnt = read(hFile, ConfigFileData, MAX_MESSAGE_SIZE)) <= 0) {
+! 		printf("TZO ERROR : Cannot read %s\n\n", filename) ;
+  		close (hFile) ;
+! 		return EXIT_FATAL ;
+  	}
+  
+  	close(hFile) ;
+--- 636,655 ----
+  	int hFile, start, nCnt ;
+  	char ConfigFileData[MAX_MESSAGE_SIZE] ;
+  	char ts[200] ;
++ 	char tmp_buf[sizeof(TzoEchoServerName)]="";
+  
+  
+  /*	if ((hFile = open(filename, O_RDWR, 0640)) < 0) { */
+  /* sgp 7/17, make open read-only */
+  	 if ((hFile = open(filename, O_RDONLY, 0640)) < 0) {
+! 		printf("TZO Error : Cannot open %s\n\n", filename) ;
+! 		return EXIT_CONFIG_ERROR ;
+  	}
+  
+  	if ((nCnt = read(hFile, ConfigFileData, MAX_MESSAGE_SIZE)) <= 0) {
+! 		printf("TZO Error : Cannot read %s\n\n", filename) ;
+  		close (hFile) ;
+! 		return EXIT_CONFIG_ERROR ;
+  	}
+  
+  	close(hFile) ;
+***************
+*** 633,640 ****
+  		int loc = start + strlen("KEY=") ;
+  		MemGetData(ConfigFileData, ts, sizeof(ts), &loc) ;
+  		if (strlen(ts) > sizeof(szGlobalTZOKey)) {
+! 			printf("TZO ERROR : TZO Key is limited to %d bytes\n\n", (int)sizeof(szGlobalTZOKey)) ;
+! 			return EXIT_FATAL ;
+  		}
+  		strcpy(szGlobalTZOKey, ts) ;
+  	}
+--- 658,665 ----
+  		int loc = start + strlen("KEY=") ;
+  		MemGetData(ConfigFileData, ts, sizeof(ts), &loc) ;
+  		if (strlen(ts) > sizeof(szGlobalTZOKey)) {
+! 			printf("TZO Error : TZO Key is limited to %d bytes\n\n", (int)sizeof(szGlobalTZOKey)) ;
+! 			return EXIT_CONFIG_ERROR ;
+  		}
+  		strcpy(szGlobalTZOKey, ts) ;
+  	}
+***************
+*** 642,649 ****
+  		int loc = start + strlen("DOMAIN=") ;
+  		MemGetData(ConfigFileData, ts, sizeof(ts), &loc) ;
+  		if (strlen(ts) > sizeof(szGlobalDomainName)) {
+! 			printf("TZO ERROR : Domain Name is limited to %d bytes\n\n", (int)sizeof(szGlobalDomainName)) ;
+! 			return EXIT_FATAL ;
+  		}
+  		strcpy(szGlobalDomainName, ts) ;
+  	}
+--- 667,674 ----
+  		int loc = start + strlen("DOMAIN=") ;
+  		MemGetData(ConfigFileData, ts, sizeof(ts), &loc) ;
+  		if (strlen(ts) > sizeof(szGlobalDomainName)) {
+! 			printf("TZO Error : Domain Name is limited to %d bytes\n\n", (int)sizeof(szGlobalDomainName)) ;
+! 			return EXIT_CONFIG_ERROR ;
+  		}
+  		strcpy(szGlobalDomainName, ts) ;
+  	}
+***************
+*** 651,658 ****
+  		int loc = start + strlen("EMAIL=") ;
+  		MemGetData(ConfigFileData, ts, sizeof(ts), &loc) ;
+  		if (strlen(ts) > sizeof(szGlobalEmailAddress)) {
+! 			printf("TZO ERROR : Email is limited to %d bytes\n\n", (int)sizeof(szGlobalEmailAddress)) ;
+! 			return EXIT_FATAL ;
+  		}
+  		strcpy(szGlobalEmailAddress, ts) ;
+  	}
+--- 676,683 ----
+  		int loc = start + strlen("EMAIL=") ;
+  		MemGetData(ConfigFileData, ts, sizeof(ts), &loc) ;
+  		if (strlen(ts) > sizeof(szGlobalEmailAddress)) {
+! 			printf("TZO Error : Email is limited to %d bytes\n\n", (int)sizeof(szGlobalEmailAddress)) ;
+! 			return EXIT_CONFIG_ERROR ;
+  		}
+  		strcpy(szGlobalEmailAddress, ts) ;
+  	}
+***************
+*** 660,667 ****
+  		int loc = start + strlen("PORT=") ;
+  		MemGetData(ConfigFileData, ts, sizeof(ts), &loc) ;
+  		if (strlen(ts) > sizeof(szGlobalPort)) {
+! 			printf("TZO ERROR : Port is limited to %d bytes\n\n", (int)sizeof(szGlobalPort)) ;
+! 			return EXIT_FATAL ;
+  		}
+  		strcpy(szGlobalPort, ts) ;
+  	}
+--- 685,692 ----
+  		int loc = start + strlen("PORT=") ;
+  		MemGetData(ConfigFileData, ts, sizeof(ts), &loc) ;
+  		if (strlen(ts) > sizeof(szGlobalPort)) {
+! 			printf("TZO Error : Port is limited to %d bytes\n\n", (int)sizeof(szGlobalPort)) ;
+! 			return EXIT_CONFIG_ERROR ;
+  		}
+  		strcpy(szGlobalPort, ts) ;
+  	}
+***************
+*** 669,685 ****
+  		int loc = start + strlen("IPFILE=") ;
+  		MemGetData(ConfigFileData, ts, sizeof(ts), &loc) ;
+  		if (strlen(ts) > sizeof(szGlobalIPaddressFile)) {
+! 			printf("TZO ERROR : IP File  is limited to %d bytes\n\n", (int)sizeof(szGlobalIPaddressFile)) ;
+! 			return EXIT_FATAL ;
+  		}
+  		strcpy(szGlobalIPaddressFile, ts) ;
+  	}
+  	if ((start = FindStringInMem("AGENT=", ConfigFileData, 0, nCnt)) >= 0) {
+  		int loc = start + strlen("AGENT=") ;
+  		MemGetData(ConfigFileData, ts, sizeof(ts), &loc) ;
+  		if (strlen(ts) > sizeof(TZO_UserAgentString)) {
+! 			printf("TZO ERROR : User Agent is limited to %d bytes\n\n", (int)sizeof(TZO_UserAgentString)) ;
+! 			return EXIT_FATAL ;
+  		}
+  		if (strcmp(TZO_UserAgentString, "Default") == 0)
+  			strcpy(TZO_UserAgentString, ts) ;
+--- 694,732 ----
+  		int loc = start + strlen("IPFILE=") ;
+  		MemGetData(ConfigFileData, ts, sizeof(ts), &loc) ;
+  		if (strlen(ts) > sizeof(szGlobalIPaddressFile)) {
+! 			printf("TZO Error : IP File  is limited to %d bytes\n\n", (int)sizeof(szGlobalIPaddressFile)) ;
+! 			return EXIT_CONFIG_ERROR ;
+  		}
+  		strcpy(szGlobalIPaddressFile, ts) ;
+  	}
++ 	if ((start = FindStringInMem("WANIP=", ConfigFileData, 0, nCnt)) >= 0) {
++ 		int loc = start + strlen("WANIP=") ;
++ 		MemGetData(ConfigFileData, ts, sizeof(ts), &loc) ;
++ 		if (strlen(ts) > sizeof(szWANIpAddress)) {
++ 			printf("TZO Error : WANIP  is limited to %d bytes\n\n", (int)sizeof(szWANIpAddress)) ;
++ 			return EXIT_CONFIG_ERROR;
++ 		}
++ 		strcpy(szWANIpAddress, ts) ;
++ 	}
++ 	if ((start = FindStringInMem("PARTNER=", ConfigFileData, 0, nCnt)) >= 0) {
++ 		int loc = start + strlen("PARTNER=") ;
++ 		MemGetData(ConfigFileData, ts, sizeof(ts), &loc) ;
++ 		if (strlen(ts) > (sizeof(TzoEchoServerName) - sizeof(".echo.tzo.com"))) {
++ 			printf("TZO Error : PARTNER  is limited to %d bytes\n\n", (int)(sizeof(TzoEchoServerName) - sizeof(".echo.tzo.com"))) ;
++ 			return EXIT_CONFIG_ERROR ;
++ 		}
++ 		sprintf(tmp_buf, "%s.%s",ts, TzoUpdateServerName);
++ 		strcpy (TzoUpdateServerName, tmp_buf);
++ 		
++ 		sprintf(tmp_buf, "%s.%s",ts, TzoEchoServerName);
++ 		strcpy (TzoEchoServerName, tmp_buf);
++ 	}
+  	if ((start = FindStringInMem("AGENT=", ConfigFileData, 0, nCnt)) >= 0) {
+  		int loc = start + strlen("AGENT=") ;
+  		MemGetData(ConfigFileData, ts, sizeof(ts), &loc) ;
+  		if (strlen(ts) > sizeof(TZO_UserAgentString)) {
+! 			printf("TZO Error : User Agent is limited to %d bytes\n\n", (int)sizeof(TZO_UserAgentString)) ;
+! 			return EXIT_CONFIG_ERROR ;
+  		}
+  		if (strcmp(TZO_UserAgentString, "Default") == 0)
+  			strcpy(TZO_UserAgentString, ts) ;
+***************
+*** 765,803 ****
+  				return EXIT_OK ;
+  			case 'u' :
+  				if (strlen(optarg) > sizeof(TZO_UserAgentString)) {
+! 					printf("TZO ERROR : User Agent is limited to %d bytes\n\n", (int)sizeof(TZO_UserAgentString)) ;
+! 					return EXIT_FATAL ;
+  				}
+  				strcpy(TZO_UserAgentString, optarg) ;
+  				break ;
+  			case 'f' :
+  				if (strlen(optarg) > sizeof(szGlobalConfigFile)) {
+! 					printf("TZO ERROR : Config file is limited to %d bytes\n\n", (int)sizeof(szGlobalConfigFile)) ;
+! 					return EXIT_FATAL ;
+  				}
+  				FromConfig = 1 ;
+  				strcpy(szGlobalConfigFile, optarg) ;
+  				break ;
+  			case 'd' :
+  				if (strlen(optarg) > sizeof(szGlobalDomainName)) {
+! 					printf("TZO ERROR : Domain Name is limited to %d bytes\n\n", (int)sizeof(szGlobalDomainName)) ;
+! 					return EXIT_FATAL ;
+  				}
+  				CmdLineArgs = 1 ;
+  				strcpy(szGlobalDomainName, optarg) ;
+  				break ;
+  			case 'e' :
+  				if (strlen(optarg) > sizeof(szGlobalEmailAddress)) {
+! 					printf("TZO ERROR : Email is limited to %d bytes\n\n", (int)sizeof(szGlobalEmailAddress)) ;
+! 					return EXIT_FATAL ;
+  				}
+  				CmdLineArgs = 1 ;
+  				strcpy(szGlobalEmailAddress, optarg) ;
+  				break ;
+  			case 'k' :
+  				if (strlen(optarg) > sizeof(szGlobalTZOKey)) {
+! 					printf("TZO ERROR : TZO Key is limited to %d bytes\n\n", (int)sizeof(szGlobalTZOKey)) ;
+! 					return EXIT_FATAL ;
+  				}
+  				CmdLineArgs = 1 ;
+  				strcpy(szGlobalTZOKey, optarg) ;
+--- 812,850 ----
+  				return EXIT_OK ;
+  			case 'u' :
+  				if (strlen(optarg) > sizeof(TZO_UserAgentString)) {
+! 					printf("TZO Error : User Agent is limited to %d bytes\n\n", (int)sizeof(TZO_UserAgentString)) ;
+! 					return EXIT_CONFIG_ERROR;
+  				}
+  				strcpy(TZO_UserAgentString, optarg) ;
+  				break ;
+  			case 'f' :
+  				if (strlen(optarg) > sizeof(szGlobalConfigFile)) {
+! 					printf("TZO Error : Config file is limited to %d bytes\n\n", (int)sizeof(szGlobalConfigFile)) ;
+! 					return EXIT_CONFIG_ERROR ;
+  				}
+  				FromConfig = 1 ;
+  				strcpy(szGlobalConfigFile, optarg) ;
+  				break ;
+  			case 'd' :
+  				if (strlen(optarg) > sizeof(szGlobalDomainName)) {
+! 					printf("TZO Error : Domain Name is limited to %d bytes\n\n", (int)sizeof(szGlobalDomainName)) ;
+! 					return EXIT_CONFIG_ERROR ;
+  				}
+  				CmdLineArgs = 1 ;
+  				strcpy(szGlobalDomainName, optarg) ;
+  				break ;
+  			case 'e' :
+  				if (strlen(optarg) > sizeof(szGlobalEmailAddress)) {
+! 					printf("TZO Error : Email is limited to %d bytes\n\n", (int)sizeof(szGlobalEmailAddress)) ;
+! 					return EXIT_CONFIG_ERROR ;
+  				}
+  				CmdLineArgs = 1 ;
+  				strcpy(szGlobalEmailAddress, optarg) ;
+  				break ;
+  			case 'k' :
+  				if (strlen(optarg) > sizeof(szGlobalTZOKey)) {
+! 					printf("TZO Error : TZO Key is limited to %d bytes\n\n", (int)sizeof(szGlobalTZOKey)) ;
+! 					return EXIT_CONFIG_ERROR ;
+  				}
+  				CmdLineArgs = 1 ;
+  				strcpy(szGlobalTZOKey, optarg) ;
+***************
+*** 808,815 ****
+  				break ;
+  			case 'l' :
+  				if (strlen(optarg) > sizeof(szGlobalIPaddressFile)) {
+! 					printf("TZO ERROR : IP Address file is limited to %d bytes\n\n", (int)sizeof(szGlobalIPaddressFile)) ;
+! 					return EXIT_FATAL ;
+  				}
+  				CmdLineArgs = 1 ;
+  				strcpy(szGlobalIPaddressFile, optarg) ;
+--- 855,862 ----
+  				break ;
+  			case 'l' :
+  				if (strlen(optarg) > sizeof(szGlobalIPaddressFile)) {
+! 					printf("TZO Error : IP Address file is limited to %d bytes\n\n", (int)sizeof(szGlobalIPaddressFile)) ;
+! 					return EXIT_CONFIG_ERROR;
+  				}
+  				CmdLineArgs = 1 ;
+  				strcpy(szGlobalIPaddressFile, optarg) ;
+***************
+*** 821,827 ****
+  	}
+  
+  	if ((CmdLineArgs) && (FromConfig)) {
+! 		printf("TZO ERROR : Unable to use Config File with specified command line arguments\n") ;
+  		return EXIT_CONFIG_ERROR ;
+  	}
+  
+--- 868,874 ----
+  	}
+  
+  	if ((CmdLineArgs) && (FromConfig)) {
+! 		printf("TZO Error : Unable to use Config File with specified command line arguments\n") ;
+  		return EXIT_CONFIG_ERROR ;
+  	}
+  
+***************
+*** 837,874 ****
+  
+  	if (strlen(szGlobalConfigFile)) {
+  		if ((ParseOptionsFromFile(szGlobalConfigFile)) != EXIT_OK)
+! 			return EXIT_FATAL ;
+  	}
+  
+  
+  	if (strlen(szGlobalTZOKey) == 0) {
+! 		printf("TZO ERROR : You must enter a TZO key\n") ;
+  		printf("type `%s -h` for Help and Usage info.\n", szExeName) ;
+! 		return EXIT_FATAL ;
+  	}
+  
+  	if (strlen(szGlobalEmailAddress) == 0) {
+! 		printf("TZO ERROR : You must enter an email address\n") ;
+  		printf("type `%s -h` for Help and Usage info.\n", szExeName) ;
+! 		return EXIT_FATAL ;
+  	}
+  
+  	if (strlen(szGlobalDomainName) == 0) {
+! 		printf("TZO ERROR : You must enter a domain name\n") ;
+  		printf("type `%s -h` for Help and Usage info.\n", szExeName) ;
+! 		return EXIT_FATAL ;
+  	}
+  
+  	if (strlen(szGlobalIPaddressFile) == 0) {
+! 		printf("TZO ERROR : You must enter a filename to store the IP address\n") ;
+  		printf("type `%s -h` for Help and Usage info.\n", szExeName) ;
+! 		return EXIT_FATAL ;
+  	}
+  
+  	DefaultHttpPort = atoi(szGlobalPort) ;
+  	if ((DefaultHttpPort != 80) && (DefaultHttpPort != 21333)) {
+! 		printf("TZO ERROR : Port <%d> is invalid, port 80 and 21333 supported\n", (int)DefaultHttpPort) ;
+! 		return EXIT_FATAL ;
+  	}
+  
+  	if (Verbose)
+--- 884,921 ----
+  
+  	if (strlen(szGlobalConfigFile)) {
+  		if ((ParseOptionsFromFile(szGlobalConfigFile)) != EXIT_OK)
+! 			return EXIT_CONFIG_ERROR ;
+  	}
+  
+  
+  	if (strlen(szGlobalTZOKey) == 0) {
+! 		printf("TZO Error : You must enter a TZO key\n") ;
+  		printf("type `%s -h` for Help and Usage info.\n", szExeName) ;
+! 		return EXIT_CONFIG_ERROR ;
+  	}
+  
+  	if (strlen(szGlobalEmailAddress) == 0) {
+! 		printf("TZO Error : You must enter an email address\n") ;
+  		printf("type `%s -h` for Help and Usage info.\n", szExeName) ;
+! 		return EXIT_CONFIG_ERROR ;
+  	}
+  
+  	if (strlen(szGlobalDomainName) == 0) {
+! 		printf("TZO Error : You must enter a domain name\n") ;
+  		printf("type `%s -h` for Help and Usage info.\n", szExeName) ;
+! 		return EXIT_CONFIG_ERROR ;
+  	}
+  
+  	if (strlen(szGlobalIPaddressFile) == 0) {
+! 		printf("TZO Error : You must enter a filename to store the IP address\n") ;
+  		printf("type `%s -h` for Help and Usage info.\n", szExeName) ;
+! 		return EXIT_CONFIG_ERROR ;
+  	}
+  
+  	DefaultHttpPort = atoi(szGlobalPort) ;
+  	if ((DefaultHttpPort != 80) && (DefaultHttpPort != 21333)) {
+! 		printf("TZO Error : Port <%d> is invalid, port 80 and 21333 supported\n", (int)DefaultHttpPort) ;
+! 		return EXIT_CONFIG_ERROR ;
+  	}
+  
+  	if (Verbose)
+***************
+*** 878,884 ****
+  	 * Get the current external WAN IP address.
+  	 */
+  	if (TzoGetCurrentIP(szCurrrentIpAddress) != TRUE) {
+! 		printf("TZO ERROR : There was a problem getting your current WAN IP address\n") ;
+  		return EXIT_TEMP_BLOCK ;
+  	}
+  
+--- 925,931 ----
+  	 * Get the current external WAN IP address.
+  	 */
+  	if (TzoGetCurrentIP(szCurrrentIpAddress) != TRUE) {
+! 		printf("TZO Error : There was a problem getting your current WAN IP address\n") ;
+  		return EXIT_TEMP_BLOCK ;
+  	}
+  
+***************
+*** 895,901 ****
+  	if (strlen((char *)szLastIpAddress) == 0) {
+  		if ((WriteIPAddressFromFile(szGlobalIPaddressFile, (unsigned char *)"testWrite")) == 0) {
+  			printf("TZO Error : Unable to access file <%s>\n", szGlobalIPaddressFile) ;
+! 			return EXIT_FATAL ;
+  		} else {
+  			printf("* The file <%s> did not exist (looks like a fresh install); forcing update...\n", szGlobalIPaddressFile) ;
+  		}
+--- 942,948 ----
+  	if (strlen((char *)szLastIpAddress) == 0) {
+  		if ((WriteIPAddressFromFile(szGlobalIPaddressFile, (unsigned char *)"testWrite")) == 0) {
+  			printf("TZO Error : Unable to access file <%s>\n", szGlobalIPaddressFile) ;
+! 			return EXIT_CONFIG_ERROR ;
+  		} else {
+  			printf("* The file <%s> did not exist (looks like a fresh install); forcing update...\n", szGlobalIPaddressFile) ;
+  		}
+***************
+*** 905,911 ****
+--- 952,961 ----
+  		 * every 28 days as we are just trying to see if we expired...
+  		 */
+  		if (IsTheFileOld(szGlobalIPaddressFile) == TRUE)
++ 		{
+  			ForceUpdate = TRUE ;
++ 			printf("* The file <%s> is old, forcing update...\n", szGlobalIPaddressFile) ;
++ 	   }
+  	}
+  
+  
+***************
+*** 922,927 ****
+--- 972,983 ----
+  				printf("* Your IP address %s has not changed\n",  szLastIpAddress) ;
+  			return EXIT_OK ;
+  		}
++ 		else
++ 		{
++ 			if (Verbose)
++ 				printf("* Your last IP address <%s> does not match new one <%s>\n",  szLastIpAddress, szCurrrentIpAddress) ;
++ 		}
++ 		
+  	}
+  
+  
+***************
+*** 936,964 ****
+  			 */
+  			if ((WriteIPAddressFromFile(szGlobalIPaddressFile, szCurrrentIpAddress)) == 0) {
+  				printf("TZO Error : Cannot write to file <%s>\n", szGlobalIPaddressFile) ;
+! 				return EXIT_FATAL ;
+  			}
+  			if (Verbose)
+  				printf("* TzoLogon() : Success\n") ;
+  			break ;
+  		case ERR_ACCOUNT_TEMP_BLOCK :
+! 			printf("TZO Warning : \n %s", szReturnBuffer) ;
+  			return EXIT_TEMP_BLOCK ;
+  		case ERR_ACCOUNT_EXPIRED :
+  			printf("TZO Error : \n %s", szReturnBuffer) ;
+! 			return EXIT_EXPIRED ;
+  		case ERR_FETCHIPADDRESS_FAILED :
+  		case ERR_OPENCONNECTION_FAILED :
+  			printf("TZO Error : \n Network Error") ;
+! 			return(EXIT_TEMP_BLOCK) ;
+  		default :
+  			/*
+  			 * Fatal error
+  			 */
+! 			printf("TZO FATAL : \n %s", szReturnBuffer) ;
+! 			return EXIT_FATAL ;
+  		}
+  
+! 	return EXIT_OK ;
+  }
+  
+--- 992,1031 ----
+  			 */
+  			if ((WriteIPAddressFromFile(szGlobalIPaddressFile, szCurrrentIpAddress)) == 0) {
+  				printf("TZO Error : Cannot write to file <%s>\n", szGlobalIPaddressFile) ;
+! 				return EXIT_CONFIG_ERROR ;
+  			}
+  			if (Verbose)
+  				printf("* TzoLogon() : Success\n") ;
+  			break ;
+  		case ERR_ACCOUNT_TEMP_BLOCK :
+!   		   printf("TZO Warning : \n %s", szReturnBuffer) ;
+! 			return EXIT_TEMP_BLOCK ;
+! 		case ERR_SERVER_DATABASE:
+!          printf("TZO Server Error : \n %s", szReturnBuffer) ; /* maintenance */
+  			return EXIT_TEMP_BLOCK ;
+  		case ERR_ACCOUNT_EXPIRED :
+  			printf("TZO Error : \n %s", szReturnBuffer) ;
+! 			return EXIT_EXPIRED ;                  /*2*/
+  		case ERR_FETCHIPADDRESS_FAILED :
+  		case ERR_OPENCONNECTION_FAILED :
+  			printf("TZO Error : \n Network Error") ;
+! 			return(EXIT_TEMP_BLOCK) ;              /* 1 */
+! 		case ERR_ACCOUNT_BLOCKED :
+! 		case ERR_BLOCKED_AGENT :
+!   	   case ERR_BLOCKED_UPDATES :
+!    		printf("TZO Error : \n TZO account blocked") ;
+! 	      return EXIT_FATAL ;
+!       case 	ERR_BAD_AUTH:
+!          printf("TZO Error : \n TZO Authentication Failure") ;
+!          return EXIT_FATAL ;
+  		default :
+  			/*
+  			 * Fatal error
+  			 */
+! 			printf("TZO Fatal : \n %s", szReturnBuffer) ;
+! 			return EXIT_FATAL ; /* 3*/
+  		}
+  
+! 	return EXIT_OK ; /* 0 */
+  }
+  
+Only in tzoupdate-1.12: tzoupdate.o
+Only in tzoupdate-1.12: .unpacked

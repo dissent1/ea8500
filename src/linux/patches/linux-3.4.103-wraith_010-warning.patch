@@ -1,0 +1,20 @@
+--- linux/scripts/Makefile.build	2014-08-12 14:05:27.952752996 -0700
++++ linux-3.4/scripts/Makefile.build	2014-08-19 17:19:01.065995423 -0700
+@@ -19,7 +19,7 @@ targets :=
+ subdir-y :=
+ subdir-m :=
+ EXTRA_AFLAGS   :=
+-EXTRA_CFLAGS   :=
++EXTRA_CFLAGS   :=-Wno-error=unused-variable -Wno-error=uninitialized -Wno-error=unused-label
+ EXTRA_CPPFLAGS :=
+ EXTRA_LDFLAGS  :=
+ asflags-y  :=
+@@ -28,7 +28,7 @@ cppflags-y :=
+ ldflags-y  :=
+ 
+ subdir-asflags-y :=
+-subdir-ccflags-y :=
++subdir-ccflags-y :=-Wno-unused-variable -Wno-uninitialized -Wno-unused-label
+ 
+ # Read auto.conf if it exists, otherwise ignore
+ -include include/config/auto.conf

@@ -1,0 +1,11 @@
+--- linux/net/core/skbuff_recycle.c	2015-02-09 10:15:16.960870023 -0800
++++ linux-3.4.103/net/core/skbuff_recycle.c	2015-02-09 15:46:21.341531548 -0800
+@@ -7,7 +7,7 @@
+  *      as published by the Free Software Foundation; either version
+  *      2 of the License, or (at your option) any later version.
+  */
+-#include <skbuff_recycle.h>
++#include "skbuff_recycle.h"
+ #include <trace/events/skb.h>
+ 
+ static DEFINE_PER_CPU(struct sk_buff_head, recycle_list);

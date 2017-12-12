@@ -1,0 +1,23 @@
+--- vsftpd-2.0.7/sysutil.c	2008-07-29 11:21:02.000000000 +0800
++++ vsftpd-2.0.7.new/sysutil.c	2016-07-13 17:34:27.941436874 +0800
+@@ -1,3 +1,4 @@
++/* Modifications were made by Linksys on or before Fri Apr 17 08:02:28 PDT 2015 */
+ /*
+  * Part of Very Secure FTPd
+  * Licence: GPL v2
+@@ -1887,6 +1888,15 @@
+     vsf_sysutil_memcpy(&p_sockaddr->u.u_sockaddr_in6.sin6_addr,
+                        &p_src->u.u_sockaddr_in6.sin6_addr,
+                        sizeof(p_sockaddr->u.u_sockaddr_in6.sin6_addr));
++  /*
++   * <run.zheng@belkin.com> 07-13-2016
++   * CIVIC-54:
++   * For IPv6 link-local address, need to specify the scope id of the network interface associated with the address, otherwise bind will fail.
++   */
++    if ((p_src->u.u_sockaddr_in6.sin6_addr.s6_addr32[0] & htonl(0xFFC00000)) == htonl(0xFE800000))
++    {
++	  p_sockaddr->u.u_sockaddr_in6.sin6_scope_id = p_src->u.u_sockaddr_in6.sin6_scope_id;
++    }
+   }
+   else
+   {
